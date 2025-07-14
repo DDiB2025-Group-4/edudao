@@ -1,0 +1,6 @@
+{
+  "DeployAllModule#EduControl": "0x6CEf054f36a6B8AB53849E8767bD18d68f109Af2",
+  "DeployAllModule#EduNFT": "0x10168537C31b19c470660c9Aec4C50efD1E39377",
+  "DeployAllModule#TransparentUpgradeableProxy": "0x4D479364c507Fe4EA48d330182583F98fFe89e79",
+  "WrapperModule#EduControl": "0x4D479364c507Fe4EA48d330182583F98fFe89e79"
+}
