@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev":"echo 'No dev script defined'",
+    "dev": "echo 'No dev script defined'",
     "build": "hardhat compile",
     "test": "hardhat test",
     "lint": "biome lint --write .",
