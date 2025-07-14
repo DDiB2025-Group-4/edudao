@@ -10,6 +10,12 @@ import { routeTree } from "./routeTree.gen";
 import "./styles.css";
 import reportWebVitals from "./reportWebVitals.ts";
 
+import "@rainbow-me/rainbowkit/styles.css";
+
+import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { WagmiProvider } from "wagmi";
+import { polygon } from "wagmi/chains";
+
 // Create a new router instance
 const router = createRouter({
   routeTree,
@@ -29,15 +35,26 @@ declare module "@tanstack/react-router" {
   }
 }
 
+const config = getDefaultConfig({
+  appName: "EduDAO",
+  projectId: "YOUR_PROJECT_ID",
+  chains: [polygon],
+  ssr: false,
+});
+
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <TanStackQueryProvider.Provider>
-        <RouterProvider router={router} />
-      </TanStackQueryProvider.Provider>
+      <WagmiProvider config={config}>
+        <TanStackQueryProvider.Provider>
+          <RainbowKitProvider>
+            <RouterProvider router={router} />
+          </RainbowKitProvider>
+        </TanStackQueryProvider.Provider>
+      </WagmiProvider>
     </StrictMode>,
   );
 }
