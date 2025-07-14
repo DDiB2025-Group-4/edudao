@@ -1,0 +1,32 @@
+{
+  "name": "edudao",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DDiB2025-Group-4/edudao.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DDiB2025-Group-4/edudao/issues"
+  },
+  "homepage": "https://github.com/DDiB2025-Group-4/edudao#readme",
+  "description": "",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npm run --workspaces dev",
+    "build": "npm run --workspaces build",
+    "lint": "npm run --workspaces lint",
+    "lint:fix": "npm run --workspaces lint:fix",
+    "lint:repo": "sherif"
+  },
+  "dependencies": {
+    "@biomejs/biome": "^2.1.1",
+    "sherif": "^1.4.0"
+  }
+}
