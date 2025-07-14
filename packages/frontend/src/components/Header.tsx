@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 export default function Header() {
   return (
     <header className="bg-background">
-      <div className="w-full max-w-3xl mx-auto flex justify-between gap-2 p-4">
+      <div className="w-full container mx-auto flex justify-between gap-2 p-4">
         <div className="flex items-center gap-2">
           <GraduationCap />
           <h1 className="text-xl font-bold">EduDAO</h1>

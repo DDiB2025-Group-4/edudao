@@ -1,5 +1,5 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Wallet } from "lucide-react";
+import { AlertTriangle, Wallet } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -13,10 +13,9 @@ export const WrappedConnectButton = () => {
   return (
     <ConnectButton.Custom>
       {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
-        const ready = mounted;
-        const connected = ready && !!account && !!chain && !chain?.unsupported;
+        const connected = mounted && !!account && !!chain;
 
-        if (!ready)
+        if (!mounted)
           return (
             <Button disabled variant="secondary">
               Loading wallet…
@@ -30,6 +29,15 @@ export const WrappedConnectButton = () => {
               Connect&nbsp;Wallet
             </Button>
           );
+
+        if (chain.unsupported) {
+          return (
+            <Button variant="destructive" onClick={openChainModal}>
+              <AlertTriangle className="h-4 w-4" />
+              Wrong&nbsp;Network
+            </Button>
+          );
+        }
 
         return (
           <DropdownMenu>
