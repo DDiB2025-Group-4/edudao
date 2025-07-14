@@ -123,7 +123,7 @@ const GraduationCertificateForm: FC<{
       files: [new File([JSON.stringify(nftMetadata)], "metadata.json")],
     });
 
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<unknown>((resolve, reject) => {
       writeContract(
         {
           address: selectedUniversity.address,
