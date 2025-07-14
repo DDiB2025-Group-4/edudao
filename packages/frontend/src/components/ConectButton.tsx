@@ -1,5 +1,6 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AlertTriangle, Wallet } from "lucide-react";
+import type { FC } from "react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -9,7 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 
-export const WrappedConnectButton = () => {
+export const WrappedConnectButton: FC<{
+  className?: string;
+}> = ({ className }) => {
   return (
     <ConnectButton.Custom>
       {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
@@ -17,14 +20,14 @@ export const WrappedConnectButton = () => {
 
         if (!mounted)
           return (
-            <Button disabled variant="secondary">
+            <Button disabled variant="secondary" className={className}>
               Loading wallet…
             </Button>
           );
 
         if (!connected)
           return (
-            <Button onClick={openConnectModal}>
+            <Button onClick={openConnectModal} className={className}>
               <Wallet className="h-4 w-4" />
               Connect&nbsp;Wallet
             </Button>
@@ -32,7 +35,7 @@ export const WrappedConnectButton = () => {
 
         if (chain.unsupported) {
           return (
-            <Button variant="destructive" onClick={openChainModal}>
+            <Button variant="destructive" onClick={openChainModal} className={className}>
               <AlertTriangle className="h-4 w-4" />
               Wrong&nbsp;Network
             </Button>
@@ -42,7 +45,7 @@ export const WrappedConnectButton = () => {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className={className}>
                 <Wallet className="h-4 w-4" />
                 {account.displayName}
               </Button>
