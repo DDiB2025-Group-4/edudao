@@ -2,9 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { sha256 } from "@sd-jwt/hash";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute } from "@tanstack/react-router";
-import { add } from "date-fns";
-import { tr } from "date-fns/locale";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Download, Loader2 } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -23,6 +21,7 @@ import { useNftsMetadata } from "@/hooks/blockchain";
 import { useOwnEduNfts } from "@/hooks/thirdweb";
 import { EDUNFT_ABI } from "@/lib/abis";
 import { thirdwebClient } from "@/lib/thirdweb";
+import type { Credential } from "@/types";
 
 export const Route = createFileRoute("/issuer")({
   component: RouteComponent,
@@ -57,6 +56,8 @@ const GraduationCertificateForm: FC<{
 }> = ({ account, selectedUniversity }) => {
   const { writeContract } = useWriteContract();
   const { signMessage } = useSignMessage();
+  const [generatedCredential, setGeneratedCredential] = useState<Credential | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -122,92 +123,58 @@ const GraduationCertificateForm: FC<{
       files: [new File([JSON.stringify(nftMetadata)], "metadata.json")],
     });
 
-    await writeContract({
-      address: selectedUniversity.address,
-      abi: EDUNFT_ABI,
-      functionName: "mint",
-      args: [values.studentWalletAddress, tokenId, uploadedMetadataUri],
+    await new Promise<void>((resolve, reject) => {
+      writeContract(
+        {
+          address: selectedUniversity.address,
+          abi: EDUNFT_ABI,
+          functionName: "mint",
+          args: [values.studentWalletAddress, tokenId, uploadedMetadataUri],
+        },
+        { onSuccess: resolve, onError: reject },
+      );
     });
 
     const credential = {
-      token: { chainId: account.chainId, address: selectedUniversity.address, tokenId: String(tokenId) },
-      credential: sdjwtCredential,
-    };
+      token: { chainId: account.chainId as number, address: selectedUniversity.address, tokenId: String(tokenId) },
+      sdjwt: sdjwtCredential,
+    } satisfies Credential;
 
     console.log("Graduation certificate issued successfully:", credential);
+    setGeneratedCredential(credential);
+    setIsSubmitted(true);
+  };
+
+  const downloadCredential = () => {
+    if (!generatedCredential) return;
+
+    const dataStr = JSON.stringify(generatedCredential, null, 2);
+    const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
+
+    const link = document.createElement("a");
+    link.href = dataUri;
+    link.download = `credential_${generatedCredential.token.tokenId}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="studentWalletAddress"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Student Wallet Address</FormLabel>
-              <FormControl>
-                <Input placeholder="0x..." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="universityName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>University Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter university name" {...field} disabled={!!selectedUniversity} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="studentName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Student Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter student name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField
             control={form.control}
-            name="faculty"
+            name="studentWalletAddress"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Faculty</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a faculty" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="business">Business</SelectItem>
-                    <SelectItem value="engineering">Engineering</SelectItem>
-                    <SelectItem value="arts">Arts</SelectItem>
-                    <SelectItem value="science">Science</SelectItem>
-                    <SelectItem value="medicine">Medicine</SelectItem>
-                    <SelectItem value="law">Law</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>Student Wallet Address</FormLabel>
+                <FormControl>
+                  <Input placeholder="0x..." {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -215,24 +182,13 @@ const GraduationCertificateForm: FC<{
 
           <FormField
             control={form.control}
-            name="degreeLevel"
+            name="universityName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Degree Level</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select degree level" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
-                    <SelectItem value="master">Master's Degree</SelectItem>
-                    <SelectItem value="phd">PhD</SelectItem>
-                    <SelectItem value="associate">Associate Degree</SelectItem>
-                    <SelectItem value="certificate">Certificate</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>University Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter university name" {...field} disabled={!!selectedUniversity} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -240,50 +196,159 @@ const GraduationCertificateForm: FC<{
 
           <FormField
             control={form.control}
-            name="graduationYear"
+            name="studentName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Graduation Year</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select graduation year" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormLabel>Student Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter student name" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
 
-        <FormField
-          control={form.control}
-          name="thumbnailImage"
-          render={({ field: { value, onChange, ...field } }) => (
-            <FormItem>
-              <FormLabel>Thumbnail Image</FormLabel>
-              <FormControl>
-                <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files)} {...field} />
-              </FormControl>
-              <FormDescription>This image will be displayed on the NFT (public)</FormDescription>
-              <FormMessage />
-            </FormItem>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+            <FormField
+              control={form.control}
+              name="faculty"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Faculty</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a faculty" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="business">Business</SelectItem>
+                      <SelectItem value="engineering">Engineering</SelectItem>
+                      <SelectItem value="arts">Arts</SelectItem>
+                      <SelectItem value="science">Science</SelectItem>
+                      <SelectItem value="medicine">Medicine</SelectItem>
+                      <SelectItem value="law">Law</SelectItem>
+                      <SelectItem value="education">Education</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="degreeLevel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Degree Level</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select degree level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
+                      <SelectItem value="master">Master's Degree</SelectItem>
+                      <SelectItem value="phd">PhD</SelectItem>
+                      <SelectItem value="associate">Associate Degree</SelectItem>
+                      <SelectItem value="certificate">Certificate</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="graduationYear"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Graduation Year</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select graduation year" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="thumbnailImage"
+            render={({ field: { value, onChange, ...field } }) => (
+              <FormItem>
+                <FormLabel>Thumbnail Image</FormLabel>
+                <FormControl>
+                  <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files)} {...field} />
+                </FormControl>
+                <FormDescription>This image will be displayed on the NFT (public)</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || isSubmitted}>
+            {isSubmitted ? "Certificate Already Issued" : "Issue Graduation Certificate"}
+          </Button>
+
+          {!isSubmitted && (
+            <Alert className="mt-4" variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Important: One-time Generation</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 list-inside list-disc space-y-1">
+                  <li>Once generated, credentials cannot be regenerated</li>
+                  <li>Store the credential JSON file securely</li>
+                  <li>Handle credential sharing with students carefully</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
           )}
-        />
+        </form>
+      </Form>
 
-        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-          Issue Graduation Certificate
-        </Button>
-      </form>
-    </Form>
+      {isSubmitted && generatedCredential && (
+        <Card className="mt-6 ">
+          <CardHeader>
+            <CardTitle>Certificate Issued Successfully</CardTitle>
+            <CardDescription>Download the credential JSON file and provide it to the student.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="rounded-lg border p-4">
+                <p className="mb-1 font-medium text-sm">Token ID:</p>
+                <p className="font-mono text-xs">{generatedCredential.token.tokenId}</p>
+              </div>
+              <Button onClick={downloadCredential} className="w-full" variant="default">
+                <Download className="mr-2 h-4 w-4" />
+                Download Credential as JSON
+              </Button>
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  This file cannot be re-downloaded. Please store it in a secure location immediately.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </>
   );
 };
 
