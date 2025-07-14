@@ -1,11 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { sha256 } from "@sd-jwt/hash";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute } from "@tanstack/react-router";
+import { add } from "date-fns";
+import { tr } from "date-fns/locale";
 import { Loader2 } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { type Address, isAddress } from "viem";
-import { useAccount } from "wagmi";
+import { upload } from "thirdweb/storage";
+import { uuidv7 } from "uuidv7";
+import { type Address, hexToBigInt, isAddress, toHex } from "viem";
+import { type UseAccountReturnType, useAccount, useSignMessage, useWriteContract } from "wagmi";
 import * as z from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNftsMetadata } from "@/hooks/blockchain";
 import { useOwnEduNfts } from "@/hooks/thirdweb";
+import { EDUNFT_ABI } from "@/lib/abis";
+import { thirdwebClient } from "@/lib/thirdweb";
 
 export const Route = createFileRoute("/issuer")({
   component: RouteComponent,
@@ -40,12 +48,15 @@ const formSchema = z.object({
   graduationYear: z.string().trim().min(1, {
     message: "Please select a graduation year",
   }),
-  thumbnailImage: z.instanceof(FileList).optional(),
+  thumbnailImage: z.instanceof(FileList),
 });
 
 const GraduationCertificateForm: FC<{
-  selectedUniversity?: { address: Address; name: string };
-}> = ({ selectedUniversity }) => {
+  account: UseAccountReturnType;
+  selectedUniversity: { address: Address; name: string };
+}> = ({ account, selectedUniversity }) => {
+  const { writeContract } = useWriteContract();
+  const { signMessage } = useSignMessage();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,10 +74,68 @@ const GraduationCertificateForm: FC<{
     }
   }, [selectedUniversity, form]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    // TODO: Implement NFT minting and SD-JWT creation
-  }
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const sdjwt = new SDJwtVcInstance({
+      signer: async (message) => new Promise((onSuccess, onError) => signMessage({ message }, { onSuccess, onError })),
+      signAlg: "ECDSA",
+      hasher: sha256,
+      hashAlg: "sha-256",
+      saltGenerator: () => crypto.randomUUID(),
+    });
+
+    const tokenId = hexToBigInt(`0x${uuidv7().replace(/-/g, "")}`);
+
+    const claims = {
+      address: values.studentWalletAddress,
+      university: values.universityName,
+      issuerAddress: account.address,
+      tokenAddress: selectedUniversity.address,
+      tokenId: String(tokenId),
+      name: values.studentName,
+      degreeLevel: values.degreeLevel,
+      graduationYear: values.graduationYear,
+      faculty: values.faculty,
+    };
+    const sdjwtCredential = await sdjwt.issue(
+      { iss: "University", iat: Date.now() / 1000, vct: "EduDAO-Graduation", ...claims },
+      { _sd: ["name", "degreeLevel", "graduationYear", "faculty"] },
+    );
+
+    const uploadedImageUri = await upload({
+      client: thirdwebClient,
+      files: [values.thumbnailImage[0]],
+    });
+
+    const nftMetadata = {
+      name: `${values.universityName} - Graduation Certificate for ${values.studentWalletAddress}`,
+      description: `Graduation certificate issued by ${values.universityName} for ${values.studentWalletAddress}`,
+      image: uploadedImageUri,
+      attributes: [
+        { trait_type: "University", value: values.universityName },
+        { trait_type: "Student Address", value: values.studentWalletAddress },
+        { trait_type: "Credendial Hash", value: toHex(sha256(sdjwtCredential)) },
+      ],
+    };
+
+    const uploadedMetadataUri = await upload({
+      client: thirdwebClient,
+      files: [new File([JSON.stringify(nftMetadata)], "metadata.json")],
+    });
+
+    await writeContract({
+      address: selectedUniversity.address,
+      abi: EDUNFT_ABI,
+      functionName: "mint",
+      args: [values.studentWalletAddress, tokenId, uploadedMetadataUri],
+    });
+
+    const credential = {
+      token: { chainId: account.chainId, address: selectedUniversity.address, tokenId: String(tokenId) },
+      credential: sdjwtCredential,
+    };
+
+    console.log("Graduation certificate issued successfully:", credential);
+  };
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
@@ -210,7 +279,7 @@ const GraduationCertificateForm: FC<{
           )}
         />
 
-        <Button type="submit" className="w-full">
+        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
           Issue Graduation Certificate
         </Button>
       </form>
@@ -249,7 +318,7 @@ function RouteComponent() {
     );
   }
 
-  if (!account.address) {
+  if (account.status !== "connected") {
     return (
       <div className="container mx-auto px-4 py-8 sm:px-8">
         <div className="mx-auto max-w-2xl">
@@ -331,7 +400,7 @@ function RouteComponent() {
           </Card>
         )}
 
-        <GraduationCertificateForm selectedUniversity={selectedUniversity} />
+        {selectedUniversity && <GraduationCertificateForm selectedUniversity={selectedUniversity} account={account} />}
       </div>
     </div>
   );
