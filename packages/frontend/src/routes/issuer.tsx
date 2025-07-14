@@ -1,12 +1,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
+import type { FC } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { isAddress } from "viem";
+import { type Address, isAddress } from "viem";
+import { useAccount } from "wagmi";
 import * as z from "zod";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNftsMetadata } from "@/hooks/blockchain";
+import { useOwnEduNfts } from "@/hooks/thirdweb";
 
 export const Route = createFileRoute("/issuer")({
   component: RouteComponent,
@@ -35,17 +43,25 @@ const formSchema = z.object({
   thumbnailImage: z.instanceof(FileList).optional(),
 });
 
-function GraduationCertificateForm() {
+const GraduationCertificateForm: FC<{
+  selectedUniversity?: { address: Address; name: string };
+}> = ({ selectedUniversity }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      universityName: "",
+      universityName: selectedUniversity?.name || "",
       studentName: "",
       faculty: "",
       degreeLevel: "",
       graduationYear: "",
     },
   });
+
+  useEffect(() => {
+    if (selectedUniversity?.name) {
+      form.setValue("universityName", selectedUniversity.name);
+    }
+  }, [selectedUniversity, form]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log(values);
@@ -79,7 +95,7 @@ function GraduationCertificateForm() {
             <FormItem>
               <FormLabel>University Name</FormLabel>
               <FormControl>
-                <Input placeholder="Enter university name" {...field} />
+                <Input placeholder="Enter university name" {...field} disabled={!!selectedUniversity} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -100,7 +116,7 @@ function GraduationCertificateForm() {
           )}
         />
 
-        <div className="grid grid-cols-1 gap-6 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
           <FormField
             control={form.control}
             name="faculty"
@@ -200,9 +216,73 @@ function GraduationCertificateForm() {
       </form>
     </Form>
   );
-}
+};
 
 function RouteComponent() {
+  const account = useAccount();
+  const ownEduNftsQuery = useOwnEduNfts(account);
+
+  const [selectedUniversity, setSelectedUniversity] = useState<{ address: Address; name: string } | undefined>();
+
+  const nftAddresses = ownEduNftsQuery.data || [];
+  const nftsMetadata = useNftsMetadata(nftAddresses);
+
+  useEffect(() => {
+    if (nftAddresses.length === 1 && nftsMetadata.data?.[0]?.result) {
+      setSelectedUniversity({
+        address: nftAddresses[0],
+        name: nftsMetadata.data[0].result as string,
+      });
+    }
+  }, [nftAddresses, nftsMetadata.data]);
+
+  if (ownEduNftsQuery.isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 sm:px-8">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading permissions...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!account.address) {
+    return (
+      <div className="container mx-auto px-4 py-8 sm:px-8">
+        <div className="mx-auto max-w-2xl">
+          <Alert>
+            <AlertTitle>Wallet Connection Required</AlertTitle>
+            <AlertDescription>Please connect your wallet to issue certificates.</AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (nftAddresses.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8 sm:px-8">
+        <div className="mx-auto max-w-2xl">
+          <Alert>
+            <AlertTitle>No Issuing Permissions</AlertTitle>
+            <AlertDescription>
+              You don't have permission to issue certificates. You need to get approval from the DAO.
+              <a
+                href="https://docs.edudao.example.com/getting-started/authorization"
+                className="ml-1 font-medium underline underline-offset-4"
+              >
+                Learn more
+              </a>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-2xl">
@@ -210,7 +290,48 @@ function RouteComponent() {
         <div className="mb-6 text-muted-foreground text-sm">
           Create an NFT with thumbnail and university name, plus a signed SD-JWT with full credentials
         </div>
-        <GraduationCertificateForm />
+
+        {nftAddresses.length > 1 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Select Issuing University</CardTitle>
+              <CardDescription>
+                You have issuing permissions for multiple universities. Please select the university to issue the
+                certificate from.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={selectedUniversity?.address}
+                onValueChange={(value) => {
+                  const index = nftAddresses.findIndex((addr) => addr === value);
+                  if (index !== -1 && nftsMetadata.data?.[index]?.result) {
+                    setSelectedUniversity({
+                      address: value as Address,
+                      name: nftsMetadata.data[index].result as string,
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a university" />
+                </SelectTrigger>
+                <SelectContent>
+                  {nftAddresses.map((address, index) => {
+                    const name = nftsMetadata.data?.[index]?.result as string | undefined;
+                    return (
+                      <SelectItem key={address} value={address}>
+                        {name || `University ${index + 1}`}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
+
+        <GraduationCertificateForm selectedUniversity={selectedUniversity} />
       </div>
     </div>
   );

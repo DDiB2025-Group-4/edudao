@@ -33,7 +33,7 @@ export const useOwnEduNfts = (account: UseAccountReturnType) => {
         })
         .filter((address) => !!address && isAddress(address));
 
-      return nftAddresses;
+      return nftAddresses; // Repeat the addresses for some reason
     },
     enabled: !!account.address,
   });
