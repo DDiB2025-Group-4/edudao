@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
+import { isAddress } from "viem";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,9 +13,10 @@ export const Route = createFileRoute("/issuer")({
 });
 
 const formSchema = z.object({
-  studentWalletAddress: z.string().min(42, {
-    message: "Please enter a valid wallet address",
-  }),
+  studentWalletAddress: z
+    .string()
+    .min(42, { message: "Please enter a valid wallet address" })
+    .refine((val) => isAddress(val), { message: "Invalid wallet address" }),
   universityName: z.string().min(2, {
     message: "University name must be at least 2 characters",
   }),
@@ -38,7 +39,6 @@ function GraduationCertificateForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      studentWalletAddress: "",
       universityName: "",
       studentName: "",
       faculty: "",
@@ -100,82 +100,84 @@ function GraduationCertificateForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="faculty"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Faculty</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a faculty" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="business">Business</SelectItem>
-                  <SelectItem value="engineering">Engineering</SelectItem>
-                  <SelectItem value="arts">Arts</SelectItem>
-                  <SelectItem value="science">Science</SelectItem>
-                  <SelectItem value="medicine">Medicine</SelectItem>
-                  <SelectItem value="law">Law</SelectItem>
-                  <SelectItem value="education">Education</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 gap-6 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="faculty"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Faculty</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a faculty" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="engineering">Engineering</SelectItem>
+                    <SelectItem value="arts">Arts</SelectItem>
+                    <SelectItem value="science">Science</SelectItem>
+                    <SelectItem value="medicine">Medicine</SelectItem>
+                    <SelectItem value="law">Law</SelectItem>
+                    <SelectItem value="education">Education</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="degreeLevel"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Degree Level</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select degree level" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
-                  <SelectItem value="master">Master's Degree</SelectItem>
-                  <SelectItem value="phd">PhD</SelectItem>
-                  <SelectItem value="associate">Associate Degree</SelectItem>
-                  <SelectItem value="certificate">Certificate</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="degreeLevel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Degree Level</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select degree level" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="bachelor">Bachelor's Degree</SelectItem>
+                    <SelectItem value="master">Master's Degree</SelectItem>
+                    <SelectItem value="phd">PhD</SelectItem>
+                    <SelectItem value="associate">Associate Degree</SelectItem>
+                    <SelectItem value="certificate">Certificate</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="graduationYear"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Graduation Year</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select graduation year" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="graduationYear"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Graduation Year</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select graduation year" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -203,18 +205,12 @@ function GraduationCertificateForm() {
 function RouteComponent() {
   return (
     <div className="container mx-auto px-4 py-8 sm:px-8">
-      <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>Issue Graduation Certificate</CardTitle>
-            <CardDescription>
-              Create an NFT with thumbnail and university name, plus a signed SD-JWT with full credentials
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <GraduationCertificateForm />
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-2xl">
+        <div className="font-bold text-foreground text-lg">Issue Graduation Certificate</div>
+        <div className="mb-6 text-muted-foreground text-sm">
+          Create an NFT with thumbnail and university name, plus a signed SD-JWT with full credentials
+        </div>
+        <GraduationCertificateForm />
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { optimismSepolia, polygon } from "wagmi/chains";
+import { optimismSepolia } from "wagmi/chains";
 
 // Create a new router instance
 const router = createRouter({
