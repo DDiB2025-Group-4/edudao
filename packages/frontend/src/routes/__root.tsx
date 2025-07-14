@@ -11,7 +11,7 @@ interface MyRouterContext {
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: () => (
-    <div className="h-[100dvh] flex flex-col">
+    <div className="flex h-[100dvh] flex-col">
       <Header />
 
       <div className="flex-1 overflow-y-auto">

@@ -6,13 +6,13 @@ import { Button } from "./ui/button";
 export default function Header() {
   return (
     <header className="bg-background">
-      <div className="w-full container mx-auto flex justify-between gap-2 p-4">
+      <div className="container mx-auto flex w-full justify-between gap-2 p-4">
         <div className="flex items-center gap-2">
           <GraduationCap />
-          <h1 className="text-xl font-bold">EduDAO</h1>
+          <h1 className="font-bold text-xl">EduDAO</h1>
         </div>
         <div className="flex gap-2">
-          <nav className="items-center hidden sm:flex">
+          <nav className="hidden items-center sm:flex">
             <Button variant="ghost" asChild>
               <Link to="/">Issuer</Link>
             </Button>

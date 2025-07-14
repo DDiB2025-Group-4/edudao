@@ -2,13 +2,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AlertTriangle, Wallet } from "lucide-react";
 import type { FC } from "react";
 import { Button } from "./ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 export const WrappedConnectButton: FC<{
   className?: string;
