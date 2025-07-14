@@ -4,6 +4,7 @@ import { useAccount } from "wagmi";
 import { WrappedConnectButton } from "@/components/ConectButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useOwnEduNfts } from "@/hooks/thirdweb";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -11,6 +12,10 @@ export const Route = createFileRoute("/")({
 
 function App() {
   const account = useAccount();
+
+  const query = useOwnEduNfts(account);
+
+  console.log("Own Edu NFTs:", query.data);
 
   return (
     <div className="container mx-auto px-4 py-8 sm:px-8">

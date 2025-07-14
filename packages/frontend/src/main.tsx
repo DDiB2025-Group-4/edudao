@@ -14,7 +14,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
-import { polygon } from "wagmi/chains";
+import { optimismSepolia, polygon } from "wagmi/chains";
 
 // Create a new router instance
 const router = createRouter({
@@ -38,7 +38,7 @@ declare module "@tanstack/react-router" {
 const config = getDefaultConfig({
   appName: "EduDAO",
   projectId: "YOUR_PROJECT_ID",
-  chains: [polygon],
+  chains: [optimismSepolia],
   ssr: false,
 });
 
