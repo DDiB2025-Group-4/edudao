@@ -72,7 +72,7 @@ contract EduControl is Initializable, AccessControlUpgradeable, IBeacon {
 
         BeaconProxy deployed = new BeaconProxy(address(this), data);
 
-        emit NewEduNftCreated(address(deployed), owner);
+        emit NewEduNftCreated(owner, address(deployed));
 
         return EduNFT(address(deployed));
     }
