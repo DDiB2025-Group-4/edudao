@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { Result as ScanResult } from "@zxing/library";
 import { AlertCircle, Camera, CheckCircle, QrCode, Shield, Type, XCircle, Zap, ZapOff } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import BarcodeScanner from "react-qr-barcode-scanner";
@@ -14,6 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/verifier")({
   component: VerifierPage,
+  validateSearch: (search) => {
+    return { data: search.data ? search.data : undefined };
+  },
 });
 
 interface VerificationResult {
@@ -52,6 +56,8 @@ interface ScannerState {
 }
 
 function VerifierPage() {
+  const { data: injectedPayload } = Route.useSearch();
+
   const [scanState, setScanState] = useState<ScanState>({
     isScanning: false,
     isProcessing: false,
@@ -80,26 +86,9 @@ function VerifierPage() {
     verificationHash: "0xabcd1234ef567890...",
   };
 
-  // Enumerate cameras on mount
-  useEffect(() => {
-    navigator.mediaDevices
-      .enumerateDevices()
-      .then((devices) => {
-        const videoDevices = devices
-          .filter((device) => device.kind === "videoinput")
-          .map((device) => ({
-            deviceId: device.deviceId,
-            label: device.label || `Camera ${device.deviceId.slice(0, 4)}`,
-          }));
-        setScannerState((prev) => ({ ...prev, devices: videoDevices }));
-      })
-      .catch((err) => {
-        setScannerState((prev) => ({ ...prev, scannerError: err.message }));
-      });
-  }, []);
-
   // Process QR data (mock verification)
   const processQRData = useCallback((_qrData: string) => {
+    console.log("Processing QR data:", _qrData);
     setScanState((prev) => ({ ...prev, isProcessing: true, result: null }));
 
     // Mock verification process
@@ -120,16 +109,19 @@ function VerifierPage() {
 
   // Handle QR code scan results
   const handleScanUpdate = useCallback(
-    (err: any, result: any) => {
-      if (err) {
-        // Decoding error - ignore and continue scanning
-        return;
-      }
+    (err: unknown, result: ScanResult | undefined) => {
+      if (err || !result) return;
 
-      const text = result?.getText?.() || result?.text;
+      const text = result.getText();
       if (text && !scanState.isProcessing) {
+        const parsed = new URLSearchParams(text);
+        if (!parsed.has("data")) {
+          setScannerState((prev) => ({ ...prev, scannerError: "Invalid QR code format" }));
+          return;
+        }
+
         setScannerState((prev) => ({ ...prev, stopStream: true }));
-        processQRData(text);
+        processQRData(parsed.get("data") || "");
       }
     },
     [scanState.isProcessing, processQRData],
@@ -156,6 +148,32 @@ function VerifierPage() {
     setScanState({ isScanning: false, isProcessing: false, result: null });
     setScannerState((prev) => ({ ...prev, stopStream: true, scannerError: null }));
   };
+
+  useEffect(() => {
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => {
+        const videoDevices = devices
+          .filter((device) => device.kind === "videoinput")
+          .map((device) => ({
+            deviceId: device.deviceId,
+            label: device.label || `Camera ${device.deviceId.slice(0, 4)}`,
+          }));
+        setScannerState((prev) => ({ ...prev, devices: videoDevices, selectedDeviceId: videoDevices[0]?.deviceId }));
+      })
+      .catch((err) => {
+        setScannerState((prev) => ({ ...prev, scannerError: err.message }));
+      });
+  }, []);
+
+  useEffect(() => {
+    if (injectedPayload) {
+      setActiveTab("manual");
+      const payloadString = typeof injectedPayload === "string" ? injectedPayload : JSON.stringify(injectedPayload);
+      setScannerState((prev) => ({ ...prev, manualInput: payloadString }));
+      processQRData(payloadString);
+    }
+  }, [injectedPayload, processQRData]);
 
   const videoConstraints: MediaTrackConstraints | undefined = scannerState.selectedDeviceId
     ? { deviceId: { exact: scannerState.selectedDeviceId } }
@@ -201,40 +219,31 @@ function VerifierPage() {
                 {/* Camera Controls */}
                 <div className="space-y-3">
                   <div className="flex gap-3">
-                    {scannerState.devices.length > 1 && (
-                      <div className="flex-1">
-                        <Label htmlFor="camera-select" className="font-medium text-sm">
-                          Camera
-                        </Label>
-                        <Select
-                          value={scannerState.selectedDeviceId || ""}
-                          onValueChange={(value) =>
-                            setScannerState((prev) => ({
-                              ...prev,
-                              selectedDeviceId: value || undefined,
-                              stopStream: true, // Force restart with new camera
-                            }))
-                          }
-                        >
-                          <SelectTrigger id="camera-select">
-                            <SelectValue placeholder="Select camera" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">Auto-select</SelectItem>
-                            {scannerState.devices.map((device) => (
-                              <SelectItem key={device.deviceId} value={device.deviceId}>
-                                {device.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
+                    <Select
+                      value={scannerState.selectedDeviceId || ""}
+                      onValueChange={(value) =>
+                        setScannerState((prev) => ({
+                          ...prev,
+                          selectedDeviceId: value || undefined,
+                          stopStream: true, // Force restart with new camera
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="camera-select" className="flex-1">
+                        <SelectValue placeholder="Select camera" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scannerState.devices.map((device) => (
+                          <SelectItem key={device.deviceId} value={device.deviceId}>
+                            {device.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
                     <div className="flex flex-col justify-end">
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => setScannerState((prev) => ({ ...prev, torch: !prev.torch }))}
                         disabled={!scanState.isScanning}
                       >
@@ -246,11 +255,7 @@ function VerifierPage() {
 
                 {/* Scanner Display */}
                 <div className="relative">
-                  <div
-                    className="aspect-square w-full overflow-hidden rounded-lg bg-muted  
-                [&>video]:absolute [&>video]:inset-0
-                [&>video]:w-full [&>video]:h-full [&>video]:object-cover"
-                  >
+                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:object-cover">
                     {scanState.isScanning && !scannerState.stopStream ? (
                       <BarcodeScanner
                         torch={scannerState.torch}

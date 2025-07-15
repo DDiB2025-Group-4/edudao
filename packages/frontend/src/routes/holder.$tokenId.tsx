@@ -274,7 +274,7 @@ function RouteComponent() {
                     <div className="flex flex-col items-center space-y-4">
                       <div className="rounded-lg border bg-white p-4">
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(payloadString ?? "")}`}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(`${location.origin}/verifier?data=${encodeURIComponent(payloadString ?? "")}`)}`}
                           alt="Verifiable presentation QR code"
                           className="aspect-square h-full w-full"
                         />
