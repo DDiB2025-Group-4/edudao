@@ -357,7 +357,7 @@ function RouteComponent() {
                     {step.status === "processing" && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
                     {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
                     {step.status === "error" && (
-                      <div className="h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 font-bold text-white text-xs">
                         !
                       </div>
                     )}
@@ -377,7 +377,7 @@ function RouteComponent() {
                     >
                       {step.label}
                     </p>
-                    {step.error && <p className="text-xs text-red-600 mt-1">{step.error}</p>}
+                    {step.error && <p className="mt-1 text-red-600 text-xs">{step.error}</p>}
                   </div>
                 </div>
               ))}
