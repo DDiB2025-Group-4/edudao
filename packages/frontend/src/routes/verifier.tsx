@@ -106,7 +106,14 @@ function VerifierPage() {
           <CardContent>
             <div className="space-y-4">
               {/* Mock Scanner Display */}
-              <BarcodeScanner onCapture={(res) => console.log(res)} />
+              <BarcodeScanner
+                onCapture={(res) => console.log(res)}
+                trackConstraints={{
+                  facingMode: "environment",
+                  width: { ideal: 1920 },
+                  height: { ideal: 1920 },
+                }}
+              />
 
               {/* Control Button */}
               <Button
