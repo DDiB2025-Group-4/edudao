@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 
 export default function Header() {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-border border-b bg-background shadow-xs">
+    <header className="sticky inset-x-0 top-0 z-50 border-border border-b bg-background shadow-xs">
       <div className="container mx-auto flex w-full justify-between gap-2 p-4">
         <Link to="/">
           <h1 className="flex items-center gap-2 font-bold text-xl">
