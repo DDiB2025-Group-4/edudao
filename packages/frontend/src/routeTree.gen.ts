@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifierRouteImport } from './routes/verifier'
 import { Route as IssuerRouteImport } from './routes/issuer'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HolderIndexRouteImport } from './routes/holder.index'
 import { Route as HolderTokenIdRouteImport } from './routes/holder.$tokenId'
 
+const VerifierRoute = VerifierRouteImport.update({
+  id: '/verifier',
+  path: '/verifier',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IssuerRoute = IssuerRouteImport.update({
   id: '/issuer',
   path: '/issuer',
@@ -38,12 +44,14 @@ const HolderTokenIdRoute = HolderTokenIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/issuer': typeof IssuerRoute
+  '/verifier': typeof VerifierRoute
   '/holder/$tokenId': typeof HolderTokenIdRoute
   '/holder': typeof HolderIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/issuer': typeof IssuerRoute
+  '/verifier': typeof VerifierRoute
   '/holder/$tokenId': typeof HolderTokenIdRoute
   '/holder': typeof HolderIndexRoute
 }
@@ -51,26 +59,41 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/issuer': typeof IssuerRoute
+  '/verifier': typeof VerifierRoute
   '/holder/$tokenId': typeof HolderTokenIdRoute
   '/holder/': typeof HolderIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/issuer' | '/holder/$tokenId' | '/holder'
+  fullPaths: '/' | '/issuer' | '/verifier' | '/holder/$tokenId' | '/holder'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/issuer' | '/holder/$tokenId' | '/holder'
-  id: '__root__' | '/' | '/issuer' | '/holder/$tokenId' | '/holder/'
+  to: '/' | '/issuer' | '/verifier' | '/holder/$tokenId' | '/holder'
+  id:
+    | '__root__'
+    | '/'
+    | '/issuer'
+    | '/verifier'
+    | '/holder/$tokenId'
+    | '/holder/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IssuerRoute: typeof IssuerRoute
+  VerifierRoute: typeof VerifierRoute
   HolderTokenIdRoute: typeof HolderTokenIdRoute
   HolderIndexRoute: typeof HolderIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verifier': {
+      id: '/verifier'
+      path: '/verifier'
+      fullPath: '/verifier'
+      preLoaderRoute: typeof VerifierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/issuer': {
       id: '/issuer'
       path: '/issuer'
@@ -105,6 +128,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IssuerRoute: IssuerRoute,
+  VerifierRoute: VerifierRoute,
   HolderTokenIdRoute: HolderTokenIdRoute,
   HolderIndexRoute: HolderIndexRoute,
 }

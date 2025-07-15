@@ -266,7 +266,7 @@ function RouteComponent() {
                 </Button>
 
                 <Dialog open={!!qrCodeUrl} onOpenChange={(open) => !open && setQrCodeUrl(null)}>
-                  <DialogContent className="sm:ma max-w-screen rounded-none px-4 xs:max-w-[calc(100%-2rem)] sm:max-w-lg sm:rounded-md">
+                  <DialogContent className="sm:ma max-w-screen xs:max-w-[calc(100%-2rem)] rounded-none px-4 sm:max-w-lg sm:rounded-md">
                     <DialogHeader>
                       <DialogTitle>Verifiable Presentation</DialogTitle>
                       <DialogDescription>Share this QR code with verifiers to prove your credentials</DialogDescription>

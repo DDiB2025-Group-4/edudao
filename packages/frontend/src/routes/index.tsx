@@ -86,7 +86,7 @@ function App() {
               </div>
               <CardFooter>
                 <Button asChild className="w-full" variant="secondary">
-                  <Link to="/">Continue as Verifier</Link>
+                  <Link to="/verifier">Continue as Verifier</Link>
                 </Button>
               </CardFooter>
             </Card>
