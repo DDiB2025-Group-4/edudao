@@ -23,7 +23,6 @@ import { download, resolveScheme } from "thirdweb/storage";
 import { type Address, verifyMessage } from "viem";
 import { useConfig } from "wagmi";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -616,13 +615,13 @@ function VerifierPage() {
                     {/* NFT Image if available */}
                     {scanState.result.certificate.nftImage && (
                       <div className="mb-4">
-                        <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-lg bg-muted">
+                        <div className="overflow-hidden rounded-lg border bg-muted">
                           <img
                             src={scanState.result.certificate.nftImage}
                             alt="Certificate NFT"
-                            className="h-full w-full object-cover"
+                            className="h-full max-h-64 w-full object-contain"
                           />
-                        </AspectRatio>
+                        </div>
                       </div>
                     )}
 
