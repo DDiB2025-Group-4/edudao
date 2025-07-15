@@ -1,17 +1,21 @@
 import { sha256 } from "@sd-jwt/hash";
 import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { readContracts } from "@wagmi/core";
 import { ExternalLink, Plus, Trash2, Upload } from "lucide-react";
 import { useRef } from "react";
 import { toast } from "sonner";
 import type { Hex } from "thirdweb";
-import { verifyMessage } from "viem";
-import { useAccount } from "wagmi";
+import { download, resolveScheme } from "thirdweb/storage";
+import { toHex, verifyMessage } from "viem";
+import { useAccount, useConfig } from "wagmi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { EDUNFT_ABI } from "@/lib/abis";
+import { thirdwebClient } from "@/lib/thirdweb";
 import { useCredentialStore } from "@/store/credentialStore";
 import type { Credential, ParsedCredential } from "@/types";
 
@@ -21,6 +25,7 @@ export const Route = createFileRoute("/holder/")({
 
 function RouteComponent() {
   const account = useAccount();
+  const wagmiConfig = useConfig();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { credentials, addCredential, removeCredential } = useCredentialStore();
@@ -36,6 +41,38 @@ function RouteComponent() {
 
       // Validate credential structure
       if (!credential.token || !credential.sdjwt) throw new Error("Invalid credential format");
+
+      const [issuerAddress, studentAddress, tokenUri] = await readContracts(wagmiConfig, {
+        contracts: [
+          {
+            address: credential.token.address,
+            abi: EDUNFT_ABI,
+            functionName: "owner",
+          },
+          {
+            address: credential.token.address,
+            abi: EDUNFT_ABI,
+            functionName: "ownerOf",
+            args: [BigInt(credential.token.tokenId)],
+          },
+          {
+            address: credential.token.address,
+            abi: EDUNFT_ABI,
+            functionName: "tokenURI",
+            args: [BigInt(credential.token.tokenId)],
+          },
+        ],
+      });
+      console.log("Issuer Address:", issuerAddress);
+      console.log("Student Address:", studentAddress);
+      console.log("Token URI:", tokenUri);
+
+      if (!issuerAddress.result || !studentAddress.result || !tokenUri.result)
+        throw new Error("Failed to fetch token details");
+      if (issuerAddress.result !== credential.issuerAddress)
+        throw new Error("Issuer address does not match the credential");
+      if (studentAddress.result !== account.address)
+        throw new Error("This credential does not belong to the current user");
 
       const sdjwt = new SDJwtVcInstance({
         signAlg: "ECDSA",
@@ -54,13 +91,28 @@ function RouteComponent() {
       const valid = await sdjwt.verify(credential.sdjwt);
       if (!valid) throw new Error("Invalid SD-JWT credential");
 
-      console.log("Credential is valid:", credential, valid);
+      const tokenMetadata = (await download({
+        client: thirdwebClient,
+        uri: tokenUri.result,
+      }).then((res) => res.json())) as { image: string; credentialHash: string };
+
+      if (!tokenMetadata || !tokenMetadata.image || !tokenMetadata.credentialHash)
+        throw new Error("Invalid token metadata");
+
+      if (tokenMetadata.credentialHash !== toHex(sha256(credential.sdjwt)))
+        throw new Error("Credential hash does not match the token metadata");
+
+      const thumbnailHttps = await resolveScheme({
+        client: thirdwebClient,
+        uri: tokenMetadata.image,
+      });
+
       const parsedCredential: ParsedCredential = {
         ...credential,
         claims: valid.payload as unknown as ParsedCredential["claims"],
         additional: {
-          thumbnailUri: "https://example.com/thumbnail.jpg", // Placeholder, replace with actual logic
-          thumbnailHttps: "https://example.com/thumbnail.jpg", // Placeholder, replace with actual
+          thumbnailUri: tokenMetadata.image, // Placeholder, replace with actual logic
+          thumbnailHttps: thumbnailHttps, // Placeholder, replace with actual
         },
       };
 

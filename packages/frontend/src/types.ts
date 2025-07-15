@@ -5,7 +5,7 @@ export interface Credential {
   token: {
     chainId: number;
     tokenId: string;
-    address: string;
+    address: Address;
   };
   sdjwt: string;
 }

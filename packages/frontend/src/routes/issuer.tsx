@@ -104,15 +104,21 @@ const GraduationCertificateForm: FC<{
       { _sd: ["name", "degreeLevel", "graduationYear", "faculty"] },
     );
 
+    const fileToUpload = new File(
+      [values.thumbnailImage[0]],
+      `thumbnail.${values.thumbnailImage[0].name.split(".").pop() || "jpg"}`,
+      { type: values.thumbnailImage[0].type, lastModified: Date.now() },
+    );
     const uploadedImageUri = await upload({
       client: thirdwebClient,
-      files: [values.thumbnailImage[0]],
+      files: [fileToUpload],
     });
 
     const nftMetadata = {
       name: `${values.universityName} - Graduation Certificate for ${values.studentWalletAddress}`,
       description: `Graduation certificate issued by ${values.universityName} for ${values.studentWalletAddress}`,
       image: uploadedImageUri,
+      credentialHash: toHex(sha256(sdjwtCredential)),
       attributes: [
         { trait_type: "University", value: values.universityName },
         { trait_type: "Student Address", value: values.studentWalletAddress },
