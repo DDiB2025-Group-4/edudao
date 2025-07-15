@@ -1,8 +1,12 @@
+import { sha256 } from "@sd-jwt/hash";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute } from "@tanstack/react-router";
 import type { Result as ScanResult } from "@zxing/library";
 import { AlertCircle, Camera, CheckCircle, QrCode, Shield, Type, XCircle, Zap, ZapOff } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import BarcodeScanner from "react-qr-barcode-scanner";
+import type { Hex } from "thirdweb";
+import { type Address, verifyMessage } from "viem";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { ParsedCredential } from "@/types";
 
 export const Route = createFileRoute("/verifier")({
   component: VerifierPage,
@@ -87,24 +92,48 @@ function VerifierPage() {
   };
 
   // Process QR data (mock verification)
-  const processQRData = useCallback((_qrData: string) => {
+  const processQRData = useCallback(async (_qrData: string) => {
     console.log("Processing QR data:", _qrData);
     setScanState((prev) => ({ ...prev, isProcessing: true, result: null }));
 
-    // Mock verification process
-    setTimeout(() => {
-      const verificationResult: VerificationResult = {
-        success: Math.random() > 0.2, // 80% success rate for demo
-        certificate: mockQRData,
-        error: Math.random() > 0.2 ? undefined : "Certificate verification failed",
-      };
+    const credential = JSON.parse(_qrData) as {
+      studentAddress: Address;
+      presantation: string;
+      timestamp: number;
+      signature: Hex;
+    };
 
-      setScanState({
-        isScanning: false,
-        isProcessing: false,
-        result: verificationResult,
-      });
-    }, 2000);
+    const sdjwt = new SDJwtVcInstance({
+      signAlg: "ECDSA",
+      verifier: async (message, sig) =>
+        verifyMessage({ message, signature: sig as Hex, address: credential.studentAddress }),
+      hasher: sha256,
+      hashAlg: "sha-256",
+    });
+    console.log("Verifying SD-JWT presentation:", credential);
+
+    const valid = await sdjwt.verify(credential.presantation, { requiredClaimKeys: [] });
+    console.log("SD-JWT verification result:", valid);
+
+    const claims = valid.payload as unknown as ParsedCredential["claims"];
+
+    setScanState({
+      isScanning: false,
+      isProcessing: false,
+      result: {
+        success: true,
+        certificate: {
+          name: claims.name,
+          university: claims.university,
+          degreeLevel: claims.degreeLevel,
+          graduationYear: claims.graduationYear,
+          faculty: claims.faculty,
+          issuerAddress: claims.issuerAddress,
+          issuedAt: new Date(credential.timestamp).toISOString(),
+        },
+        error: undefined,
+      },
+    });
   }, []);
 
   // Handle QR code scan results
@@ -363,19 +392,17 @@ function VerifierPage() {
 
             {scanState.result && (
               <div className="space-y-4">
-                <Alert className={scanState.result.success ? "border-green-600" : "border-destructive"}>
-                  <div className="flex items-center gap-2">
-                    {scanState.result.success ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    )}
-                    <AlertDescription>
-                      {scanState.result.success
-                        ? "Certificate verified successfully!"
-                        : scanState.result.error || "Verification failed"}
-                    </AlertDescription>
-                  </div>
+                <Alert className={scanState.result.success ? "border-primary" : "border-destructive"}>
+                  {scanState.result.success ? (
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  )}
+                  <AlertDescription>
+                    {scanState.result.success
+                      ? "Certificate verified successfully!"
+                      : scanState.result.error || "Verification failed"}
+                  </AlertDescription>
                 </Alert>
 
                 {scanState.result.success && scanState.result.certificate && (
@@ -395,7 +422,7 @@ function VerifierPage() {
                       <Separator />
                       <div className="grid grid-cols-3 gap-2">
                         <span className="font-medium text-muted-foreground text-sm">University:</span>
-                        <span className="col-span-2 text-sm">{scanState.result.certificate.university}</span>
+                        <span className="col-span-2 text-sm truncate">{scanState.result.certificate.university}</span>
                       </div>
                       <Separator />
                       <div className="grid grid-cols-3 gap-2">
@@ -415,22 +442,15 @@ function VerifierPage() {
                       <Separator />
                       <div className="grid grid-cols-3 gap-2">
                         <span className="font-medium text-muted-foreground text-sm">Issued:</span>
-                        <span className="col-span-2 text-sm">
+                        <span className="col-span-2 text-sm ">
                           {new Date(scanState.result.certificate.issuedAt).toLocaleDateString()}
                         </span>
                       </div>
                       <Separator />
                       <div className="grid grid-cols-3 gap-2">
                         <span className="font-medium text-muted-foreground text-sm">Issuer:</span>
-                        <span className="col-span-2 font-mono text-xs">
+                        <span className="col-span-2 font-mono text-xs truncate">
                           {scanState.result.certificate.issuerAddress}
-                        </span>
-                      </div>
-                      <Separator />
-                      <div className="grid grid-cols-3 gap-2">
-                        <span className="font-medium text-muted-foreground text-sm">Hash:</span>
-                        <span className="col-span-2 font-mono text-xs">
-                          {scanState.result.certificate.verificationHash}
                         </span>
                       </div>
                     </div>

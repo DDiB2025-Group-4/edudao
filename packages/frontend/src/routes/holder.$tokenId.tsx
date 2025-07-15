@@ -71,6 +71,7 @@ function RouteComponent() {
     const sdjwt = new SDJwtVcInstance({ hasher: sha256, hashAlg: "sha-256" });
 
     const payloadToSign = {
+      studentAddress: credential.claims.address,
       presantation: await sdjwt.present(credential.sdjwt),
       timestamp: Date.now(),
     };
