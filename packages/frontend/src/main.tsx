@@ -2,8 +2,6 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 
-import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provider.tsx";
-
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
@@ -13,15 +11,16 @@ import reportWebVitals from "./reportWebVitals.ts";
 import "@rainbow-me/rainbowkit/styles.css";
 
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { optimismSepolia } from "wagmi/chains";
+
+const queryClient = new QueryClient();
 
 // Create a new router instance
 const router = createRouter({
   routeTree,
-  context: {
-    ...TanStackQueryProvider.getContext(),
-  },
+  context: { queryClient },
   defaultPreload: "intent",
   scrollRestoration: true,
   defaultStructuralSharing: true,
@@ -48,13 +47,13 @@ if (rootElement && !rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <WagmiProvider config={config}>
-        <TanStackQueryProvider.Provider>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={config}>
           <RainbowKitProvider>
             <RouterProvider router={router} />
           </RainbowKitProvider>
-        </TanStackQueryProvider.Provider>
-      </WagmiProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
     </StrictMode>,
   );
 }

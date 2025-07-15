@@ -10,11 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IssuerRouteImport } from './routes/issuer'
+import { Route as HolderRouteImport } from './routes/holder'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HolderTokenIdRouteImport } from './routes/holder.$tokenId'
 
 const IssuerRoute = IssuerRouteImport.update({
   id: '/issuer',
   path: '/issuer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HolderRoute = HolderRouteImport.update({
+  id: '/holder',
+  path: '/holder',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -22,30 +29,42 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HolderTokenIdRoute = HolderTokenIdRouteImport.update({
+  id: '/$tokenId',
+  path: '/$tokenId',
+  getParentRoute: () => HolderRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/holder': typeof HolderRouteWithChildren
   '/issuer': typeof IssuerRoute
+  '/holder/$tokenId': typeof HolderTokenIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/holder': typeof HolderRouteWithChildren
   '/issuer': typeof IssuerRoute
+  '/holder/$tokenId': typeof HolderTokenIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/holder': typeof HolderRouteWithChildren
   '/issuer': typeof IssuerRoute
+  '/holder/$tokenId': typeof HolderTokenIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/issuer'
+  fullPaths: '/' | '/holder' | '/issuer' | '/holder/$tokenId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/issuer'
-  id: '__root__' | '/' | '/issuer'
+  to: '/' | '/holder' | '/issuer' | '/holder/$tokenId'
+  id: '__root__' | '/' | '/holder' | '/issuer' | '/holder/$tokenId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HolderRoute: typeof HolderRouteWithChildren
   IssuerRoute: typeof IssuerRoute
 }
 
@@ -58,6 +77,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IssuerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/holder': {
+      id: '/holder'
+      path: '/holder'
+      fullPath: '/holder'
+      preLoaderRoute: typeof HolderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -65,11 +91,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/holder/$tokenId': {
+      id: '/holder/$tokenId'
+      path: '/$tokenId'
+      fullPath: '/holder/$tokenId'
+      preLoaderRoute: typeof HolderTokenIdRouteImport
+      parentRoute: typeof HolderRoute
+    }
   }
 }
 
+interface HolderRouteChildren {
+  HolderTokenIdRoute: typeof HolderTokenIdRoute
+}
+
+const HolderRouteChildren: HolderRouteChildren = {
+  HolderTokenIdRoute: HolderTokenIdRoute,
+}
+
+const HolderRouteWithChildren =
+  HolderRoute._addFileChildren(HolderRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HolderRoute: HolderRouteWithChildren,
   IssuerRoute: IssuerRoute,
 }
 export const routeTree = rootRouteImport

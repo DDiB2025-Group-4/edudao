@@ -14,10 +14,10 @@ export default function Header() {
         <div className="flex gap-2">
           <nav className="hidden items-center sm:flex">
             <Button variant="ghost" asChild>
-              <Link to="/">Issuer</Link>
+              <Link to="/issuer">Issuer</Link>
             </Button>
             <Button variant="ghost" asChild>
-              <Link to="/">Holder</Link>
+              <Link to="/holder">Holder</Link>
             </Button>
             <Button variant="ghost" asChild>
               <Link to="/">Verifier</Link>
