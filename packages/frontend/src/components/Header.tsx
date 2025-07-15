@@ -7,10 +7,12 @@ export default function Header() {
   return (
     <header className="bg-background">
       <div className="container mx-auto flex w-full justify-between gap-2 p-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap />
-          <h1 className="font-bold text-xl">EduDAO</h1>
-        </div>
+        <Link to="/">
+          <h1 className="flex items-center gap-2 font-bold text-xl">
+            <GraduationCap className="w-4-h-4" />
+            EduDAO
+          </h1>
+        </Link>
         <div className="flex gap-2">
           <nav className="hidden items-center sm:flex">
             <Button variant="ghost" asChild>
