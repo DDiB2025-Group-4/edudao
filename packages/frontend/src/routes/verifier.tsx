@@ -27,7 +27,6 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -268,12 +267,12 @@ function VerifierPage() {
                   });
                 }
                 updateStep("metadata", { status: "completed" });
-              } catch (error) {
+              } catch (_error) {
                 updateStep("metadata", { status: "error", error: "Failed to fetch metadata" });
               }
             }
           }
-        } catch (error) {
+        } catch (_error) {
           updateStep("blockchain", { status: "error", error: "Blockchain verification failed" });
         }
 
@@ -525,6 +524,10 @@ function VerifierPage() {
                         ? "Scanning..."
                         : "Start Scanning"}
                 </Button>
+
+                <div className="font-semibold text-lg text-muted-foreground">
+                  If the QR code cannot be read properly, please re-read it using Google Lens, Apple Camera, etc.
+                </div>
               </TabsContent>
 
               <TabsContent value="manual" className="space-y-4">
@@ -639,7 +642,7 @@ function VerifierPage() {
                         <>
                           <div className="grid grid-cols-3 gap-2">
                             <span className="font-medium text-muted-foreground text-sm">University:</span>
-                            <span className="col-span-2 text-sm truncate">
+                            <span className="col-span-2 truncate text-sm">
                               {scanState.result.certificate.university}
                             </span>
                           </div>
@@ -690,7 +693,7 @@ function VerifierPage() {
                           <Separator />
                           <div className="grid grid-cols-3 gap-2">
                             <span className="font-medium text-muted-foreground text-sm">Issuer:</span>
-                            <span className="col-span-2 font-mono text-xs truncate">
+                            <span className="col-span-2 truncate font-mono text-xs">
                               {scanState.result.certificate.issuerAddress}
                             </span>
                           </div>
@@ -700,7 +703,7 @@ function VerifierPage() {
 
                     {/* Disclosed fields summary */}
                     <div className="rounded-lg bg-muted p-3">
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         <strong>Disclosed Information:</strong> {scanState.result.disclosedFields.join(", ")}
                       </p>
                     </div>
@@ -726,7 +729,7 @@ function VerifierPage() {
                             {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
                             {step.status === "skipped" && <div className="h-5 w-5 text-gray-400">—</div>}
                             {step.status === "error" && (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 font-bold text-white text-xs">
                                 !
                               </div>
                             )}
@@ -748,7 +751,7 @@ function VerifierPage() {
                             >
                               {step.label}
                             </p>
-                            {step.error && <p className="mt-1 text-xs text-red-600">{step.error}</p>}
+                            {step.error && <p className="mt-1 text-red-600 text-xs">{step.error}</p>}
                           </div>
                         </div>
                       ))}
