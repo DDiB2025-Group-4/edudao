@@ -86,7 +86,9 @@ function App() {
               </div>
               <CardFooter>
                 <Button asChild className="w-full" variant="secondary">
-                  <Link to="/verifier">Continue as Verifier</Link>
+                  <Link to="/verifier" search={{ data: undefined }}>
+                    Continue as Verifier
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>

@@ -70,7 +70,7 @@ function RouteComponent() {
 
     const payloadToSign = {
       studentAddress: credential.claims.address,
-      presantation: await sdjwt.present(credential.sdjwt, selectiveDisclosure),
+      presantation: await sdjwt.present(credential.sdjwt, selectiveDisclosure as Record<never, never>),
       timestamp: Date.now(),
     };
     const message = JSON.stringify(payloadToSign);

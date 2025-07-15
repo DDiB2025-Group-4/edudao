@@ -22,7 +22,9 @@ export default function Header() {
               <Link to="/holder">Holder</Link>
             </Button>
             <Button variant="ghost" asChild>
-              <Link to="/verifier">Verifier</Link>
+              <Link to="/verifier" search={{ data: undefined }}>
+                Verifier
+              </Link>
             </Button>
           </nav>
           <WrappedConnectButton />
