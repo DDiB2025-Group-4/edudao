@@ -258,7 +258,7 @@ function RouteComponent() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {userCredentials.map((credential) => (
+              {(userCredentials as ParsedCredential[]).map((credential) => (
                 <Card
                   key={credential.token.tokenId}
                   className="cursor-pointer overflow-hidden transition-shadow hover:shadow-lg"

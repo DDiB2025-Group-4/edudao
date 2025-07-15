@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertCircle, Camera, CheckCircle, QrCode, Shield, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, QrCode, Shield, XCircle } from "lucide-react";
 import { useState } from "react";
+import { BarcodeScanner } from "react-barcode-scanner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import "react-barcode-scanner/polyfill";
 
 export const Route = createFileRoute("/verifier")({
   component: VerifierPage,
@@ -104,35 +106,7 @@ function VerifierPage() {
           <CardContent>
             <div className="space-y-4">
               {/* Mock Scanner Display */}
-              <div
-                className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-border border-dashed ${scanState.isScanning ? "animate-pulse border-primary" : ""} ${scanState.isProcessing ? "border-warning" : ""} `}
-              >
-                {scanState.isScanning && (
-                  <div className="absolute inset-0 animate-pulse bg-primary/10">
-                    <div className="absolute inset-4 rounded-lg border-2 border-primary">
-                      <div className="absolute top-0 left-0 h-6 w-6 rounded-tl-lg border-primary border-t-2 border-l-2" />
-                      <div className="absolute top-0 right-0 h-6 w-6 rounded-tr-lg border-primary border-t-2 border-r-2" />
-                      <div className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-lg border-primary border-b-2 border-l-2" />
-                      <div className="absolute right-0 bottom-0 h-6 w-6 rounded-br-lg border-primary border-r-2 border-b-2" />
-                    </div>
-                  </div>
-                )}
-
-                <div className="text-center">
-                  <Camera
-                    className={`mx-auto mb-2 h-12 w-12 ${
-                      scanState.isScanning ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  />
-                  <p className="text-muted-foreground text-sm">
-                    {scanState.isScanning
-                      ? "Scanning QR code..."
-                      : scanState.isProcessing
-                        ? "Processing..."
-                        : "Click to start scanning"}
-                  </p>
-                </div>
-              </div>
+              <BarcodeScanner onCapture={(res) => console.log(res)} />
 
               {/* Control Button */}
               <Button
