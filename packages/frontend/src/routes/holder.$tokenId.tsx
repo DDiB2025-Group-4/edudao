@@ -1,21 +1,17 @@
+import { sha256 } from "@sd-jwt/hash";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCheck, Copy, QrCode, Shield } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
+import type { Hex } from "viem";
+import { useSignMessage } from "wagmi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useCredentialStore } from "@/store/credentialStore";
@@ -42,6 +38,8 @@ function RouteComponent() {
     graduationYear: true,
     faculty: true,
   });
+  const { signMessage } = useSignMessage();
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
   if (!credential) {
     return (
@@ -66,21 +64,26 @@ function RouteComponent() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const generateQrCode = () => {
+  const handleGenerateQrCode = async () => {
     // Mock QR code generation
-    const selectedFields = Object.entries(selectiveDisclosure)
-      .filter(([_, selected]) => selected)
-      .map(([field, _]) => field);
+    console.log(selectiveDisclosure);
 
-    const mockPresentation = {
-      credential: credential.sdjwt,
-      disclosed: selectedFields,
+    const sdjwt = new SDJwtVcInstance({ hasher: sha256, hashAlg: "sha-256" });
+
+    const payloadToSign = {
+      presantation: await sdjwt.present(credential.sdjwt),
       timestamp: Date.now(),
     };
+    const message = JSON.stringify(payloadToSign);
+    const signature = await new Promise<Hex>((onSuccess, onError) => signMessage({ message }, { onSuccess, onError }));
+
+    const payload = { ...payloadToSign, signature };
 
     // In a real implementation, this would generate an actual QR code
-    console.log("Generated presentation:", mockPresentation);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify(mockPresentation))}`;
+    console.log("Generated presentation:", payload);
+    const url = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(JSON.stringify(payload))}`;
+
+    setQrCodeUrl(url);
   };
 
   const PropertyRow: FC<{
@@ -128,7 +131,7 @@ function RouteComponent() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 overflow-hidden rounded-md bg-muted border">
+                <div className="mb-4 overflow-hidden rounded-md border bg-muted">
                   <img
                     src={credential.additional.thumbnailHttps}
                     alt={`${credential.claims.university} credential`}
@@ -257,21 +260,24 @@ function RouteComponent() {
                   </div>
                 </div>
 
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className="w-full" variant="default">
-                      <QrCode className="mr-2 h-4 w-4" />
-                      Generate QR Code
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                <Button className="w-full" variant="default" onClick={handleGenerateQrCode}>
+                  <QrCode className="mr-2 h-4 w-4" />
+                  Generate QR Code
+                </Button>
+
+                <Dialog open={!!qrCodeUrl} onOpenChange={(open) => !open && setQrCodeUrl(null)}>
+                  <DialogContent className="sm:ma max-w-screen rounded-none px-4 xs:max-w-[calc(100%-2rem)] sm:max-w-lg sm:rounded-md">
                     <DialogHeader>
                       <DialogTitle>Verifiable Presentation</DialogTitle>
                       <DialogDescription>Share this QR code with verifiers to prove your credentials</DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center space-y-4">
                       <div className="rounded-lg border bg-white p-4">
-                        <img src={generateQrCode()} alt="Verifiable presentation QR code" className="h-64 w-64" />
+                        <img
+                          src={qrCodeUrl ?? ""}
+                          alt="Verifiable presentation QR code"
+                          className="aspect-square h-full w-full"
+                        />
                       </div>
                       <Alert>
                         <AlertDescription className="text-sm">
