@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { Toaster } from "sonner";
 import { Footer } from "@/components/Footer.tsx";
 import Header from "../components/Header";
 
@@ -21,6 +22,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
       <ReactQueryDevtools buttonPosition="bottom-right" />
       <Footer />
+      <Toaster />
     </div>
   ),
 });
