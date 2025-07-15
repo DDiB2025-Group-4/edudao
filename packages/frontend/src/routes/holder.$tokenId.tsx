@@ -1,16 +1,23 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Copy, CheckCheck, QrCode, Shield, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, CheckCheck, Copy, Eye, EyeOff, QrCode, Shield } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useCredentialStore } from "@/store/credentialStore";
 
 export const Route = createFileRoute("/holder/$tokenId")({
@@ -43,15 +50,9 @@ function RouteComponent() {
         <div className="mx-auto max-w-4xl">
           <Alert variant="destructive">
             <AlertTitle>Credential not found</AlertTitle>
-            <AlertDescription>
-              The requested credential could not be found. It may have been removed.
-            </AlertDescription>
+            <AlertDescription>The requested credential could not be found. It may have been removed.</AlertDescription>
           </Alert>
-          <Button
-            variant="outline"
-            className="mt-4"
-            onClick={() => navigate({ to: "/holder" })}
-          >
+          <Button variant="outline" className="mt-4" onClick={() => navigate({ to: "/holder" })}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Credentials
           </Button>
@@ -71,13 +72,13 @@ function RouteComponent() {
     const selectedFields = Object.entries(selectiveDisclosure)
       .filter(([_, selected]) => selected)
       .map(([field, _]) => field);
-    
+
     const mockPresentation = {
       credential: credential.sdjwt,
       disclosed: selectedFields,
       timestamp: Date.now(),
     };
-    
+
     // In a real implementation, this would generate an actual QR code
     console.log("Generated presentation:", mockPresentation);
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify(mockPresentation))}`;
@@ -90,25 +91,16 @@ function RouteComponent() {
     sensitive?: boolean;
   }> = ({ label, value, copyable = false, sensitive = false }) => {
     const displayValue = sensitive && !showSensitive ? "••••••••••••" : value;
-    
+
     return (
       <div className="flex items-center justify-between py-3">
         <div className="flex-1">
           <p className="text-muted-foreground text-sm">{label}</p>
-          <p className="font-mono text-sm break-all">{displayValue}</p>
+          <p className="break-all font-mono text-sm">{displayValue}</p>
         </div>
         {copyable && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCopy(value, label)}
-            className="ml-2"
-          >
-            {copied === label ? (
-              <CheckCheck className="h-4 w-4" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
+          <Button variant="ghost" size="sm" onClick={() => handleCopy(value, label)} className="ml-2">
+            {copied === label ? <CheckCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </Button>
         )}
       </div>
@@ -118,28 +110,20 @@ function RouteComponent() {
   return (
     <div className="container mx-auto px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-4xl">
-        <Button
-          variant="ghost"
-          className="mb-6"
-          onClick={() => navigate({ to: "/holder" })}
-        >
+        <Button variant="ghost" className="mb-6" onClick={() => navigate({ to: "/holder" })}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Credentials
         </Button>
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-xl">
-                      {credential.parsedData.university}
-                    </CardTitle>
-                    <CardDescription>
-                      Educational Credential
-                    </CardDescription>
+                    <CardTitle className="text-xl">{credential.parsedData.university}</CardTitle>
+                    <CardDescription>Educational Credential</CardDescription>
                   </div>
                   <Badge variant="outline" className="ml-auto">
                     <Shield className="mr-1 h-3 w-3" />
@@ -158,25 +142,16 @@ function RouteComponent() {
 
                 <div className="space-y-6">
                   <div>
-                    <h3 className="font-semibold text-lg mb-3">Basic Information</h3>
+                    <h3 className="mb-3 font-semibold text-lg">Basic Information</h3>
                     <div className="space-y-1">
-                      <PropertyRow
-                        label="University"
-                        value={credential.parsedData.university}
-                      />
+                      <PropertyRow label="University" value={credential.parsedData.university} />
                       <PropertyRow
                         label="Student Name"
                         value={credential.parsedData.name || "Not disclosed"}
                         sensitive
                       />
-                      <PropertyRow
-                        label="Degree Level"
-                        value={credential.parsedData.degreeLevel || "Not disclosed"}
-                      />
-                      <PropertyRow
-                        label="Faculty"
-                        value={credential.parsedData.faculty || "Not disclosed"}
-                      />
+                      <PropertyRow label="Degree Level" value={credential.parsedData.degreeLevel || "Not disclosed"} />
+                      <PropertyRow label="Faculty" value={credential.parsedData.faculty || "Not disclosed"} />
                       <PropertyRow
                         label="Graduation Year"
                         value={credential.parsedData.graduationYear || "Not disclosed"}
@@ -187,13 +162,9 @@ function RouteComponent() {
                   <Separator />
 
                   <div>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="mb-3 flex items-center justify-between">
                       <h3 className="font-semibold text-lg">Technical Details</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowSensitive(!showSensitive)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => setShowSensitive(!showSensitive)}>
                         {showSensitive ? (
                           <>
                             <EyeOff className="mr-2 h-4 w-4" />
@@ -208,21 +179,9 @@ function RouteComponent() {
                       </Button>
                     </div>
                     <div className="space-y-1">
-                      <PropertyRow
-                        label="Token ID"
-                        value={credential.token.tokenId}
-                        copyable
-                      />
-                      <PropertyRow
-                        label="Contract Address"
-                        value={credential.token.address}
-                        copyable
-                        sensitive
-                      />
-                      <PropertyRow
-                        label="Chain ID"
-                        value={credential.token.chainId.toString()}
-                      />
+                      <PropertyRow label="Token ID" value={credential.token.tokenId} copyable />
+                      <PropertyRow label="Contract Address" value={credential.token.address} copyable sensitive />
+                      <PropertyRow label="Chain ID" value={credential.token.chainId.toString()} />
                       <PropertyRow
                         label="Issuer Address"
                         value={credential.parsedData.issuerAddress}
@@ -241,9 +200,7 @@ function RouteComponent() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Selective Disclosure</CardTitle>
-                <CardDescription>
-                  Choose which fields to include in your verifiable presentation
-                </CardDescription>
+                <CardDescription>Choose which fields to include in your verifiable presentation</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -258,7 +215,7 @@ function RouteComponent() {
                         })
                       }
                     />
-                    <Label htmlFor="name" className="text-sm font-normal cursor-pointer">
+                    <Label htmlFor="name" className="cursor-pointer font-normal text-sm">
                       Student Name
                     </Label>
                   </div>
@@ -273,7 +230,7 @@ function RouteComponent() {
                         })
                       }
                     />
-                    <Label htmlFor="degreeLevel" className="text-sm font-normal cursor-pointer">
+                    <Label htmlFor="degreeLevel" className="cursor-pointer font-normal text-sm">
                       Degree Level
                     </Label>
                   </div>
@@ -288,7 +245,7 @@ function RouteComponent() {
                         })
                       }
                     />
-                    <Label htmlFor="graduationYear" className="text-sm font-normal cursor-pointer">
+                    <Label htmlFor="graduationYear" className="cursor-pointer font-normal text-sm">
                       Graduation Year
                     </Label>
                   </div>
@@ -303,7 +260,7 @@ function RouteComponent() {
                         })
                       }
                     />
-                    <Label htmlFor="faculty" className="text-sm font-normal cursor-pointer">
+                    <Label htmlFor="faculty" className="cursor-pointer font-normal text-sm">
                       Faculty
                     </Label>
                   </div>
@@ -319,22 +276,16 @@ function RouteComponent() {
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Verifiable Presentation</DialogTitle>
-                      <DialogDescription>
-                        Share this QR code with verifiers to prove your credentials
-                      </DialogDescription>
+                      <DialogDescription>Share this QR code with verifiers to prove your credentials</DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center space-y-4">
-                      <div className="rounded-lg border p-4 bg-white">
-                        <img
-                          src={generateQrCode()}
-                          alt="Verifiable presentation QR code"
-                          className="h-64 w-64"
-                        />
+                      <div className="rounded-lg border bg-white p-4">
+                        <img src={generateQrCode()} alt="Verifiable presentation QR code" className="h-64 w-64" />
                       </div>
                       <Alert>
                         <AlertDescription className="text-sm">
-                          This QR code contains only the selected fields. The verifier can validate
-                          the authenticity without seeing undisclosed information.
+                          This QR code contains only the selected fields. The verifier can validate the authenticity
+                          without seeing undisclosed information.
                         </AlertDescription>
                       </Alert>
                     </div>
@@ -347,8 +298,8 @@ function RouteComponent() {
               <Shield className="h-4 w-4" />
               <AlertTitle>Privacy Protected</AlertTitle>
               <AlertDescription className="text-sm">
-                Your credential data is stored locally and never sent to external servers.
-                Only you control what information to share.
+                Your credential data is stored locally and never sent to external servers. Only you control what
+                information to share.
               </AlertDescription>
             </Alert>
           </div>

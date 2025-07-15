@@ -1,38 +1,70 @@
+import { sha256 } from "@sd-jwt/hash";
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, Plus, Trash2, Upload } from "lucide-react";
-import type { FC } from "react";
 import { useRef } from "react";
+import { toast } from "sonner";
+import type { Hex } from "thirdweb";
+import { verifyMessage } from "viem";
+import { useAccount } from "wagmi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCredentialStore } from "@/store/credentialStore";
-import type { Credential } from "@/types";
+import type { Credential, ParsedCredential } from "@/types";
 
 export const Route = createFileRoute("/holder/")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
+  const account = useAccount();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { credentials, addCredential, removeCredential } = useCredentialStore();
 
+  const userCredentials = (account.address && credentials[account.address]) ?? [];
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !account.address) return;
 
     try {
       const text = await file.text();
       const credential = JSON.parse(text) as Credential;
 
       // Validate credential structure
-      if (!credential.token || !credential.sdjwt) {
-        throw new Error("Invalid credential format");
-      }
+      if (!credential.token || !credential.sdjwt) throw new Error("Invalid credential format");
 
-      addCredential(credential);
+      const sdjwt = new SDJwtVcInstance({
+        signAlg: "ECDSA",
+        verifier: async (message, sig) => {
+          return verifyMessage({
+            message,
+            signature: sig as Hex,
+            address: credential.issuerAddress,
+          });
+        },
+        hasher: sha256,
+        hashAlg: "sha-256",
+        saltGenerator: () => crypto.randomUUID(),
+      });
+
+      const valid = await sdjwt.verify(credential.sdjwt);
+      if (!valid) throw new Error("Invalid SD-JWT credential");
+
+      console.log("Credential is valid:", credential, valid);
+      const parsedCredential: ParsedCredential = {
+        ...credential,
+        claims: valid.payload as unknown as ParsedCredential["claims"],
+        additional: {
+          thumbnailUri: "https://example.com/thumbnail.jpg", // Placeholder, replace with actual logic
+          thumbnailHttps: "https://example.com/thumbnail.jpg", // Placeholder, replace with actual
+        },
+      };
+
+      addCredential(account.address, parsedCredential);
 
       // Reset file input
       if (fileInputRef.current) {
@@ -40,7 +72,7 @@ function RouteComponent() {
       }
     } catch (error) {
       console.error("Failed to import credential:", error);
-      alert("Failed to import credential. Please ensure the file is a valid credential JSON.");
+      toast.error(`Failed to import credential: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
@@ -56,15 +88,15 @@ function RouteComponent() {
     <div className="container mx-auto px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8">
-          <h1 className="font-bold text-foreground text-2xl mb-2">My Credentials</h1>
+          <h1 className="mb-2 font-bold text-2xl text-foreground">My Credentials</h1>
           <p className="text-muted-foreground">
             Import and manage your educational credentials. View details and generate verifiable presentations.
           </p>
         </div>
 
-        {credentials.length === 0 ? (
+        {userCredentials.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <Alert className="max-w-md mb-6">
+            <Alert className="mb-6 max-w-md">
               <Upload className="h-4 w-4" />
               <AlertTitle>No credentials yet</AlertTitle>
               <AlertDescription>
@@ -103,18 +135,18 @@ function RouteComponent() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {credentials.map((credential) => (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {userCredentials.map((credential) => (
                 <Card
                   key={credential.token.tokenId}
-                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  className="cursor-pointer overflow-hidden transition-shadow hover:shadow-lg"
                   onClick={() => handleCredentialClick(credential.token.tokenId)}
                 >
                   <CardHeader className="pb-3">
                     <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-md bg-muted">
                       <img
-                        src={credential.parsedData.thumbnail}
-                        alt={`${credential.parsedData.university} credential`}
+                        src={credential.additional.thumbnailHttps}
+                        alt={`${credential.claims.university} credential`}
                         className="h-full w-full object-cover"
                       />
                     </AspectRatio>
@@ -122,27 +154,27 @@ function RouteComponent() {
 
                   <CardContent className="space-y-3">
                     <div>
-                      <CardTitle className="text-lg line-clamp-1">{credential.parsedData.university}</CardTitle>
+                      <CardTitle className="line-clamp-1 text-lg">{credential.claims.university}</CardTitle>
                       <CardDescription className="line-clamp-1">
-                        {credential.parsedData.name || "Student Name"}
+                        {credential.claims.name || "Student Name"}
                       </CardDescription>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {credential.parsedData.degreeLevel && (
+                      {credential.claims.degreeLevel && (
                         <Badge variant="secondary" className="text-xs">
-                          {credential.parsedData.degreeLevel}
+                          {credential.claims.degreeLevel}
                         </Badge>
                       )}
-                      {credential.parsedData.graduationYear && (
+                      {credential.claims.graduationYear && (
                         <Badge variant="outline" className="text-xs">
-                          {credential.parsedData.graduationYear}
+                          {credential.claims.graduationYear}
                         </Badge>
                       )}
                     </div>
                   </CardContent>
 
-                  <CardFooter className="pt-3 flex justify-between">
+                  <CardFooter className="flex justify-between pt-3">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -162,8 +194,8 @@ function RouteComponent() {
                       className="text-destructive hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm("Are you sure you want to remove this credential?")) {
-                          removeCredential(credential.token.tokenId);
+                        if (account.address && confirm("Are you sure you want to remove this credential?")) {
+                          removeCredential(account.address, credential.token.tokenId);
                         }
                       }}
                     >
