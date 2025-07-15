@@ -15,7 +15,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     <div className="flex h-[100dvh] flex-col">
       <Header />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         <Outlet />
       </div>
       <TanStackRouterDevtools />

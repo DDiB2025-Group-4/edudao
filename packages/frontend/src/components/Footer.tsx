@@ -1,6 +1,6 @@
 export const Footer = () => {
   return (
-    <footer className="bg-background ">
+    <footer className="border-border border-t bg-background">
       <div className="container mx-auto flex w-full justify-between gap-2 p-4">
         <div className="text-muted-foreground text-sm">© {new Date().getFullYear()} EduDAO. All rights reserved.</div>
         <nav className="flex gap-2">
