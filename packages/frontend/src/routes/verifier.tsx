@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertCircle, CheckCircle, QrCode, Shield, XCircle } from "lucide-react";
-import { useState } from "react";
-import { BarcodeScanner } from "react-barcode-scanner";
+import { AlertCircle, Camera, CheckCircle, QrCode, Shield, Type, XCircle, Zap, ZapOff } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import BarcodeScanner from "react-qr-barcode-scanner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import "react-barcode-scanner/polyfill";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/verifier")({
   component: VerifierPage,
@@ -34,12 +37,37 @@ interface ScanState {
   result: VerificationResult | null;
 }
 
+interface CameraDevice {
+  deviceId: string;
+  label: string;
+}
+
+interface ScannerState {
+  devices: CameraDevice[];
+  selectedDeviceId: string | undefined;
+  torch: boolean;
+  stopStream: boolean;
+  scannerError: string | null;
+  manualInput: string;
+}
+
 function VerifierPage() {
   const [scanState, setScanState] = useState<ScanState>({
     isScanning: false,
     isProcessing: false,
     result: null,
   });
+
+  const [scannerState, setScannerState] = useState<ScannerState>({
+    devices: [],
+    selectedDeviceId: undefined,
+    torch: false,
+    stopStream: false,
+    scannerError: null,
+    manualInput: "",
+  });
+
+  const [activeTab, setActiveTab] = useState("scanner");
 
   const mockQRData = {
     name: "John Doe",
@@ -52,33 +80,86 @@ function VerifierPage() {
     verificationHash: "0xabcd1234ef567890...",
   };
 
+  // Enumerate cameras on mount
+  useEffect(() => {
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => {
+        const videoDevices = devices
+          .filter((device) => device.kind === "videoinput")
+          .map((device) => ({
+            deviceId: device.deviceId,
+            label: device.label || `Camera ${device.deviceId.slice(0, 4)}`,
+          }));
+        setScannerState((prev) => ({ ...prev, devices: videoDevices }));
+      })
+      .catch((err) => {
+        setScannerState((prev) => ({ ...prev, scannerError: err.message }));
+      });
+  }, []);
+
+  // Process QR data (mock verification)
+  const processQRData = useCallback((_qrData: string) => {
+    setScanState((prev) => ({ ...prev, isProcessing: true, result: null }));
+
+    // Mock verification process
+    setTimeout(() => {
+      const verificationResult: VerificationResult = {
+        success: Math.random() > 0.2, // 80% success rate for demo
+        certificate: mockQRData,
+        error: Math.random() > 0.2 ? undefined : "Certificate verification failed",
+      };
+
+      setScanState({
+        isScanning: false,
+        isProcessing: false,
+        result: verificationResult,
+      });
+    }, 2000);
+  }, []);
+
+  // Handle QR code scan results
+  const handleScanUpdate = useCallback(
+    (err: any, result: any) => {
+      if (err) {
+        // Decoding error - ignore and continue scanning
+        return;
+      }
+
+      const text = result?.getText?.() || result?.text;
+      if (text && !scanState.isProcessing) {
+        setScannerState((prev) => ({ ...prev, stopStream: true }));
+        processQRData(text);
+      }
+    },
+    [scanState.isProcessing, processQRData],
+  );
+
+  // Handle camera errors
+  const handleScanError = useCallback((err: Error | string) => {
+    const errorMessage = typeof err === "string" ? err : err.name;
+    setScannerState((prev) => ({ ...prev, scannerError: errorMessage }));
+  }, []);
+
   const handleStartScan = () => {
     setScanState({ isScanning: true, isProcessing: false, result: null });
-
-    // Mock QR scan process
-    setTimeout(() => {
-      setScanState((prev) => ({ ...prev, isScanning: false, isProcessing: true }));
-
-      // Mock verification process
-      setTimeout(() => {
-        const verificationResult: VerificationResult = {
-          success: Math.random() > 0.2, // 80% success rate for demo
-          certificate: mockQRData,
-          error: Math.random() > 0.2 ? undefined : "Certificate verification failed",
-        };
-
-        setScanState({
-          isScanning: false,
-          isProcessing: false,
-          result: verificationResult,
-        });
-      }, 2000);
-    }, 1500);
+    setScannerState((prev) => ({ ...prev, stopStream: false, scannerError: null }));
   };
+
+  const handleManualVerify = useCallback(() => {
+    if (!scannerState.manualInput.trim()) return;
+    processQRData(scannerState.manualInput);
+    setScannerState((prev) => ({ ...prev, manualInput: "" }));
+  }, [processQRData, scannerState.manualInput]);
 
   const handleReset = () => {
     setScanState({ isScanning: false, isProcessing: false, result: null });
+    setScannerState((prev) => ({ ...prev, stopStream: true, scannerError: null }));
   };
+
+  const videoConstraints: MediaTrackConstraints | undefined = scannerState.selectedDeviceId
+    ? { deviceId: { exact: scannerState.selectedDeviceId } }
+    : { facingMode: "environment" };
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -99,38 +180,151 @@ function VerifierPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <QrCode className="h-5 w-5" />
-              QR Code Scanner
+              Certificate Verification
             </CardTitle>
-            <CardDescription>Position the QR code within the scanner area to verify the certificate</CardDescription>
+            <CardDescription>Scan a QR code or manually input certificate data</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Mock Scanner Display */}
-              <BarcodeScanner
-                onCapture={(res) => console.log(res)}
-                trackConstraints={{
-                  facingMode: "environment",
-                  width: { ideal: 1920 },
-                  height: { ideal: 1920 },
-                }}
-              />
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="scanner" className="flex items-center gap-2">
+                  <Camera className="h-4 w-4" />
+                  Scanner
+                </TabsTrigger>
+                <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <Type className="h-4 w-4" />
+                  Manual
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Control Button */}
-              <Button
-                onClick={scanState.result ? handleReset : handleStartScan}
-                disabled={scanState.isScanning || scanState.isProcessing}
-                className="w-full"
-                variant={scanState.result ? "outline" : "default"}
-              >
-                {scanState.isScanning
-                  ? "Scanning..."
-                  : scanState.isProcessing
+              <TabsContent value="scanner" className="space-y-4">
+                {/* Camera Controls */}
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    {scannerState.devices.length > 1 && (
+                      <div className="flex-1">
+                        <Label htmlFor="camera-select" className="font-medium text-sm">
+                          Camera
+                        </Label>
+                        <Select
+                          value={scannerState.selectedDeviceId || ""}
+                          onValueChange={(value) =>
+                            setScannerState((prev) => ({
+                              ...prev,
+                              selectedDeviceId: value || undefined,
+                              stopStream: true, // Force restart with new camera
+                            }))
+                          }
+                        >
+                          <SelectTrigger id="camera-select">
+                            <SelectValue placeholder="Select camera" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Auto-select</SelectItem>
+                            {scannerState.devices.map((device) => (
+                              <SelectItem key={device.deviceId} value={device.deviceId}>
+                                {device.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setScannerState((prev) => ({ ...prev, torch: !prev.torch }))}
+                        disabled={!scanState.isScanning}
+                      >
+                        {scannerState.torch ? <ZapOff className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scanner Display */}
+                <div className="relative">
+                  <div
+                    className="aspect-square w-full overflow-hidden rounded-lg bg-muted  
+                [&>video]:absolute [&>video]:inset-0
+                [&>video]:w-full [&>video]:h-full [&>video]:object-cover"
+                  >
+                    {scanState.isScanning && !scannerState.stopStream ? (
+                      <BarcodeScanner
+                        torch={scannerState.torch}
+                        stopStream={scannerState.stopStream}
+                        videoConstraints={videoConstraints}
+                        onUpdate={handleScanUpdate}
+                        onError={handleScanError}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                          <QrCode className="mx-auto mb-2 h-12 w-12" />
+                          <p>Camera ready</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scanning overlay */}
+                  {scanState.isScanning && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="rounded-lg border-2 border-primary border-dashed opacity-50" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Scanner Error */}
+                {scannerState.scannerError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{scannerState.scannerError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Control Button */}
+                <Button
+                  onClick={scanState.result ? handleReset : handleStartScan}
+                  disabled={scanState.isProcessing}
+                  className="w-full"
+                  variant={scanState.result ? "outline" : "default"}
+                >
+                  {scanState.isProcessing
                     ? "Verifying..."
                     : scanState.result
                       ? "Scan Another"
-                      : "Start Scanning"}
-              </Button>
-            </div>
+                      : scanState.isScanning
+                        ? "Scanning..."
+                        : "Start Scanning"}
+                </Button>
+              </TabsContent>
+
+              <TabsContent value="manual" className="space-y-4">
+                <div className="space-y-3">
+                  <Label htmlFor="manual-input" className="font-medium text-sm">
+                    Certificate Data
+                  </Label>
+                  <Textarea
+                    id="manual-input"
+                    placeholder="Paste certificate data or QR code content here..."
+                    value={scannerState.manualInput}
+                    onChange={(e) => setScannerState((prev) => ({ ...prev, manualInput: e.target.value }))}
+                    className="min-h-[120px]"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleManualVerify}
+                  disabled={!scannerState.manualInput.trim() || scanState.isProcessing}
+                  className="w-full"
+                >
+                  {scanState.isProcessing ? "Verifying..." : "Verify Certificate"}
+                </Button>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
@@ -164,10 +358,10 @@ function VerifierPage() {
 
             {scanState.result && (
               <div className="space-y-4">
-                <Alert className={scanState.result.success ? "border-green-500" : "border-destructive"}>
+                <Alert className={scanState.result.success ? "border-green-600" : "border-destructive"}>
                   <div className="flex items-center gap-2">
                     {scanState.result.success ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-green-600" />
                     ) : (
                       <XCircle className="h-4 w-4 text-destructive" />
                     )}
@@ -183,7 +377,7 @@ function VerifierPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold">Certificate Details</h3>
-                      <Badge variant="secondary" className="bg-green-50 text-green-600">
+                      <Badge variant="secondary" className="bg-green-50 text-green-700">
                         Verified
                       </Badge>
                     </div>
@@ -223,14 +417,14 @@ function VerifierPage() {
                       <Separator />
                       <div className="grid grid-cols-3 gap-2">
                         <span className="font-medium text-muted-foreground text-sm">Issuer:</span>
-                        <span className="col-span-2 font-mono text-sm text-xs">
+                        <span className="col-span-2 font-mono text-xs">
                           {scanState.result.certificate.issuerAddress}
                         </span>
                       </div>
                       <Separator />
                       <div className="grid grid-cols-3 gap-2">
                         <span className="font-medium text-muted-foreground text-sm">Hash:</span>
-                        <span className="col-span-2 font-mono text-sm text-xs">
+                        <span className="col-span-2 font-mono text-xs">
                           {scanState.result.certificate.verificationHash}
                         </span>
                       </div>

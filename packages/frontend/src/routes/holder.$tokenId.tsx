@@ -39,7 +39,7 @@ function RouteComponent() {
     faculty: true,
   });
   const { signMessage } = useSignMessage();
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [payloadString, setPayloadString] = useState<string | null>(null);
 
   if (!credential) {
     return (
@@ -81,9 +81,9 @@ function RouteComponent() {
 
     // In a real implementation, this would generate an actual QR code
     console.log("Generated presentation:", payload);
-    const url = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    const payloadString = JSON.stringify(payload);
 
-    setQrCodeUrl(url);
+    setPayloadString(payloadString);
   };
 
   const PropertyRow: FC<{
@@ -265,7 +265,7 @@ function RouteComponent() {
                   Generate QR Code
                 </Button>
 
-                <Dialog open={!!qrCodeUrl} onOpenChange={(open) => !open && setQrCodeUrl(null)}>
+                <Dialog open={!!payloadString} onOpenChange={(open) => !open && setPayloadString(null)}>
                   <DialogContent className="sm:ma max-w-screen xs:max-w-[calc(100%-2rem)] rounded-none px-4 sm:max-w-lg sm:rounded-md">
                     <DialogHeader>
                       <DialogTitle>Verifiable Presentation</DialogTitle>
@@ -274,11 +274,23 @@ function RouteComponent() {
                     <div className="flex flex-col items-center space-y-4">
                       <div className="rounded-lg border bg-white p-4">
                         <img
-                          src={qrCodeUrl ?? ""}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(payloadString ?? "")}`}
                           alt="Verifiable presentation QR code"
                           className="aspect-square h-full w-full"
                         />
                       </div>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => handleCopy(payloadString ?? "", "QR Code Data")}
+                      >
+                        {copied === "QR Code Data" ? (
+                          <CheckCheck className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Copy className="mr-2 h-4 w-4" />
+                        )}
+                        Copy Payload
+                      </Button>
                       <Alert>
                         <AlertDescription className="text-sm">
                           This QR code contains only the selected fields. The verifier can validate the authenticity
