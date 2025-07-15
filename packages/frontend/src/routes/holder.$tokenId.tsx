@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, CheckCheck, Copy, Eye, EyeOff, QrCode, Shield } from "lucide-react";
+import { ArrowLeft, CheckCheck, Copy, QrCode, Shield } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -36,7 +36,6 @@ function RouteComponent() {
   const { tokenId } = Route.useParams();
   const credential = useCredentialStore((state) => state.getCredential(tokenId));
   const [copied, setCopied] = useState<string | null>(null);
-  const [showSensitive, setShowSensitive] = useState(false);
   const [selectiveDisclosure, setSelectiveDisclosure] = useState<SelectiveDisclosure>({
     name: true,
     degreeLevel: true,
@@ -88,19 +87,16 @@ function RouteComponent() {
     label: string;
     value: string;
     copyable?: boolean;
-    sensitive?: boolean;
-  }> = ({ label, value, copyable = false, sensitive = false }) => {
-    const displayValue = sensitive && !showSensitive ? "••••••••••••" : value;
-
+  }> = ({ label, value, copyable = false }) => {
     return (
-      <div className="flex items-center justify-between py-3">
+      <div className="flex items-center justify-between py-2">
         <div className="flex-1">
-          <p className="text-muted-foreground text-sm">{label}</p>
-          <p className="break-all font-mono text-sm">{displayValue}</p>
+          <p className="text-muted-foreground text-xs">{label}</p>
+          <p className="break-all font-mono text-sm">{value}</p>
         </div>
         {copyable && (
-          <Button variant="ghost" size="sm" onClick={() => handleCopy(value, label)} className="ml-2">
-            {copied === label ? <CheckCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          <Button variant="ghost" size="sm" onClick={() => handleCopy(value, label)} className="ml-2 h-8 px-2">
+            {copied === label ? <CheckCheck className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
           </Button>
         )}
       </div>
@@ -110,14 +106,14 @@ function RouteComponent() {
   return (
     <div className="container mx-auto px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-4xl">
-        <Button variant="ghost" className="mb-6" onClick={() => navigate({ to: "/holder" })}>
+        <Button variant="ghost" className="mb-4" onClick={() => navigate({ to: "/holder" })}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Credentials
         </Button>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-5">
           {/* Main Content */}
-          <div className="space-y-6 lg:col-span-2">
+          <div className="space-y-4 lg:col-span-3">
             <Card>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -132,20 +128,20 @@ function RouteComponent() {
                 </div>
               </CardHeader>
               <CardContent>
-                <AspectRatio ratio={16 / 9} className="mb-6 overflow-hidden rounded-md bg-muted">
+                <div className="mb-4 overflow-hidden rounded-md bg-muted border">
                   <img
                     src={credential.additional.thumbnailHttps}
                     alt={`${credential.claims.university} credential`}
                     className="h-full w-full object-cover"
                   />
-                </AspectRatio>
+                </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <h3 className="mb-3 font-semibold text-lg">Basic Information</h3>
-                    <div className="space-y-1">
+                    <h3 className="mb-2 font-semibold text-base">Basic Information</h3>
+                    <div className="divide-y">
                       <PropertyRow label="University" value={credential.claims.university} />
-                      <PropertyRow label="Student Name" value={credential.claims.name || "Not disclosed"} sensitive />
+                      <PropertyRow label="Student Name" value={credential.claims.name || "Not disclosed"} />
                       <PropertyRow label="Degree Level" value={credential.claims.degreeLevel || "Not disclosed"} />
                       <PropertyRow label="Faculty" value={credential.claims.faculty || "Not disclosed"} />
                       <PropertyRow
@@ -158,27 +154,12 @@ function RouteComponent() {
                   <Separator />
 
                   <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="font-semibold text-lg">Technical Details</h3>
-                      <Button variant="ghost" size="sm" onClick={() => setShowSensitive(!showSensitive)}>
-                        {showSensitive ? (
-                          <>
-                            <EyeOff className="mr-2 h-4 w-4" />
-                            Hide
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Show
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    <div className="space-y-1">
+                    <h3 className="mb-2 font-semibold text-base">Technical Details</h3>
+                    <div className="divide-y">
                       <PropertyRow label="Token ID" value={credential.token.tokenId} copyable />
-                      <PropertyRow label="Contract Address" value={credential.token.address} copyable sensitive />
+                      <PropertyRow label="Contract Address" value={credential.token.address} copyable />
                       <PropertyRow label="Chain ID" value={credential.token.chainId.toString()} />
-                      <PropertyRow label="Issuer Address" value={credential.claims.issuerAddress} copyable sensitive />
+                      <PropertyRow label="Issuer Address" value={credential.claims.issuerAddress} copyable />
                     </div>
                   </div>
                 </div>
@@ -187,14 +168,22 @@ function RouteComponent() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 lg:col-span-2">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <CardTitle className="text-base">Selective Disclosure</CardTitle>
-                <CardDescription>Choose which fields to include in your verifiable presentation</CardDescription>
+                <CardDescription className="text-xs">
+                  Choose which fields to include in your verifiable presentation
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="university" checked={true} disabled />
+                    <Label htmlFor="university" className="font-normal text-sm opacity-75">
+                      University (Always included)
+                    </Label>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="name"
@@ -257,6 +246,17 @@ function RouteComponent() {
                   </div>
                 </div>
 
+                <div className="border-t pt-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="verification" checked={true} disabled />
+                      <Label htmlFor="verification" className="font-normal text-sm opacity-75">
+                        Verification Data (Always included)
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button className="w-full" variant="default">
@@ -286,11 +286,10 @@ function RouteComponent() {
             </Card>
 
             <Alert>
-              <Shield className="h-4 w-4" />
-              <AlertTitle>Privacy Protected</AlertTitle>
-              <AlertDescription className="text-sm">
-                Your credential data is stored locally and never sent to external servers. Only you control what
-                information to share.
+              <Shield className="h-3 w-3" />
+              <AlertTitle className="text-sm">Privacy Protected</AlertTitle>
+              <AlertDescription className="text-xs">
+                Your credential data is stored locally and never sent to external servers.
               </AlertDescription>
             </Alert>
           </div>
