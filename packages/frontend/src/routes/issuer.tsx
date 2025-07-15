@@ -76,6 +76,8 @@ const GraduationCertificateForm: FC<{
   }, [selectedUniversity, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!account.address || !account.chainId) return;
+
     const sdjwt = new SDJwtVcInstance({
       signer: async (message) => new Promise((onSuccess, onError) => signMessage({ message }, { onSuccess, onError })),
       signAlg: "ECDSA",
@@ -136,6 +138,7 @@ const GraduationCertificateForm: FC<{
     });
 
     const credential = {
+      issuerAddress: account.address,
       token: { chainId: account.chainId as number, address: selectedUniversity.address, tokenId: String(tokenId) },
       sdjwt: sdjwtCredential,
     } satisfies Credential;

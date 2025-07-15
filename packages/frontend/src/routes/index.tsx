@@ -64,7 +64,7 @@ function App() {
               </div>
               <CardFooter>
                 <Button asChild className="w-full">
-                  <Link to="/">Continue as Holder</Link>
+                  <Link to="/holder">Continue as Holder</Link>
                 </Button>
               </CardFooter>
             </Card>

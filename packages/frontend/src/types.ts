@@ -1,4 +1,5 @@
 export interface Credential {
+  issuerAddress: string;
   token: {
     chainId: number;
     tokenId: string;

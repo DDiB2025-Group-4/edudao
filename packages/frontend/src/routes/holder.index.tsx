@@ -1,17 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Upload, Trash2, ExternalLink } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ExternalLink, Plus, Trash2, Upload } from "lucide-react";
 import type { FC } from "react";
 import { useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCredentialStore } from "@/store/credentialStore";
 import type { Credential } from "@/types";
-import { useNavigate } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/holder")({
+export const Route = createFileRoute("/holder/")({
   component: RouteComponent,
 });
 
@@ -27,14 +26,14 @@ function RouteComponent() {
     try {
       const text = await file.text();
       const credential = JSON.parse(text) as Credential;
-      
+
       // Validate credential structure
       if (!credential.token || !credential.sdjwt) {
         throw new Error("Invalid credential format");
       }
-      
+
       addCredential(credential);
-      
+
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -69,15 +68,16 @@ function RouteComponent() {
               <Upload className="h-4 w-4" />
               <AlertTitle>No credentials yet</AlertTitle>
               <AlertDescription>
-                Import your credential JSON files to get started. These files are provided by your educational institution.
+                Import your credential JSON files to get started. These files are provided by your educational
+                institution.
               </AlertDescription>
             </Alert>
-            
+
             <Button onClick={handleImportClick} size="lg" className="gap-2">
               <Plus className="h-5 w-5" />
               Import Credential
             </Button>
-            
+
             <input
               ref={fileInputRef}
               type="file"
@@ -93,7 +93,7 @@ function RouteComponent() {
                 <Upload className="h-4 w-4" />
                 Import More
               </Button>
-              
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -105,7 +105,7 @@ function RouteComponent() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {credentials.map((credential) => (
-                <Card 
+                <Card
                   key={credential.token.tokenId}
                   className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleCredentialClick(credential.token.tokenId)}
@@ -119,17 +119,15 @@ function RouteComponent() {
                       />
                     </AspectRatio>
                   </CardHeader>
-                  
+
                   <CardContent className="space-y-3">
                     <div>
-                      <CardTitle className="text-lg line-clamp-1">
-                        {credential.parsedData.university}
-                      </CardTitle>
+                      <CardTitle className="text-lg line-clamp-1">{credential.parsedData.university}</CardTitle>
                       <CardDescription className="line-clamp-1">
                         {credential.parsedData.name || "Student Name"}
                       </CardDescription>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-2">
                       {credential.parsedData.degreeLevel && (
                         <Badge variant="secondary" className="text-xs">
@@ -143,7 +141,7 @@ function RouteComponent() {
                       )}
                     </div>
                   </CardContent>
-                  
+
                   <CardFooter className="pt-3 flex justify-between">
                     <Button
                       variant="ghost"
@@ -157,7 +155,7 @@ function RouteComponent() {
                       <ExternalLink className="h-3 w-3" />
                       View Details
                     </Button>
-                    
+
                     <Button
                       variant="ghost"
                       size="sm"
