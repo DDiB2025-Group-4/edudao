@@ -3,7 +3,19 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute } from "@tanstack/react-router";
 import { readContracts } from "@wagmi/core";
 import type { Result as ScanResult } from "@zxing/library";
-import { AlertCircle, Camera, CheckCircle, CheckCircle2, Loader2, QrCode, Shield, Type, XCircle, Zap, ZapOff } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  CheckCircle,
+  CheckCircle2,
+  Loader2,
+  QrCode,
+  Shield,
+  Type,
+  XCircle,
+  Zap,
+  ZapOff,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import BarcodeScanner from "react-qr-barcode-scanner";
 import type { Hex } from "thirdweb";
@@ -24,6 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { EDUNFT_ABI } from "@/lib/abis";
 import { thirdwebClient } from "@/lib/thirdweb";
+import type { ParsedCredential } from "@/types";
 
 export const Route = createFileRoute("/verifier")({
   component: VerifierPage,
@@ -49,7 +62,6 @@ interface VerificationResult {
   tokenInfo?: {
     address: Address;
     tokenId: string;
-    chainId: number;
   };
 }
 
@@ -127,104 +139,107 @@ function VerifierPage() {
   }, []);
 
   // Process QR data with multi-step verification
-  const processQRData = useCallback(async (_qrData: string) => {
-    console.log("Processing QR data:", _qrData);
-    resetVerificationSteps();
-    setScanState((prev) => ({ ...prev, isProcessing: true, result: null }));
+  const processQRData = useCallback(
+    async (_qrData: string) => {
+      console.log("Processing QR data:", _qrData);
+      resetVerificationSteps();
+      setScanState((prev) => ({ ...prev, isProcessing: true, result: null }));
 
-    const disclosedFields: string[] = [];
-    let nftImage: string | undefined;
+      const disclosedFields: string[] = [];
+      let nftImage: string | undefined;
 
-    try {
-      // Step 1: Parse presentation data
-      updateStep("parse", { status: "processing" });
-      let presentationData: {
-        studentAddress: Address;
-        presantation: string; // Note: typo in original
-        timestamp: number;
-        signature: Hex;
-        tokenInfo?: {
-          address: Address;
-          tokenId: string;
-          chainId: number;
+      try {
+        // Step 1: Parse presentation data
+        updateStep("parse", { status: "processing" });
+        let presentationData: {
+          studentAddress: Address;
+          presantation: string; // Note: typo in original
+          timestamp: number;
+          signature: Hex;
         };
-      };
 
-      try {
-        presentationData = JSON.parse(_qrData);
-        if (!presentationData.presantation || !presentationData.studentAddress) {
-          throw new Error("Invalid presentation format");
+        try {
+          presentationData = JSON.parse(_qrData);
+          if (!presentationData.presantation || !presentationData.studentAddress) {
+            throw new Error("Invalid presentation format");
+          }
+        } catch (error) {
+          updateStep("parse", { status: "error", error: "Failed to parse presentation data" });
+          throw error;
         }
-      } catch (error) {
-        updateStep("parse", { status: "error", error: "Failed to parse presentation data" });
-        throw error;
-      }
-      updateStep("parse", { status: "completed" });
+        updateStep("parse", { status: "completed" });
 
-      // Step 2: Verify SD-JWT signature
-      updateStep("signature", { status: "processing" });
-      const sdjwt = new SDJwtVcInstance({
-        signAlg: "ECDSA",
-        verifier: async (message, sig) =>
-          verifyMessage({ message, signature: sig as Hex, address: presentationData.studentAddress }),
-        hasher: sha256,
-        hashAlg: "sha-256",
-      });
+        // Step 2: Verify SD-JWT signature
+        updateStep("signature", { status: "processing" });
+        const sdjwt = new SDJwtVcInstance({
+          signAlg: "ECDSA",
+          verifier: async (message, sig) =>
+            verifyMessage({ message, signature: sig as Hex, address: presentationData.studentAddress }),
+          hasher: sha256,
+          hashAlg: "sha-256",
+        });
 
-      let verificationResult: { payload: Record<string, any> } | undefined;
-      try {
-        verificationResult = await sdjwt.verify(presentationData.presantation, { requiredClaimKeys: [] });
-        if (!verificationResult) {
-          throw new Error("Invalid signature");
+        let verificationResult: { payload: Record<string, any> } | undefined;
+        try {
+          verificationResult = await sdjwt.verify(presentationData.presantation, { requiredClaimKeys: [] });
+          if (!verificationResult) {
+            throw new Error("Invalid signature");
+          }
+        } catch (error) {
+          updateStep("signature", { status: "error", error: "Invalid SD-JWT signature" });
+          throw error;
         }
-      } catch (error) {
-        updateStep("signature", { status: "error", error: "Invalid SD-JWT signature" });
-        throw error;
-      }
-      updateStep("signature", { status: "completed" });
+        updateStep("signature", { status: "completed" });
 
-      // Step 3: Validate timestamp
-      updateStep("timestamp", { status: "processing" });
-      const currentTime = Date.now();
-      const timeDiff = currentTime - presentationData.timestamp;
-      // Check if timestamp is within 5 minutes
-      if (timeDiff > 5 * 60 * 1000) {
-        updateStep("timestamp", { status: "error", error: "Presentation has expired" });
-        throw new Error("Presentation timestamp is too old");
-      }
-      updateStep("timestamp", { status: "completed" });
-
-      // Extract claims and track disclosed fields
-      const claims = verificationResult.payload as Record<string, any>;
-      const possibleFields = ["name", "university", "degreeLevel", "graduationYear", "faculty", "issuerAddress"];
-      for (const field of possibleFields) {
-        if (claims[field] !== undefined) {
-          disclosedFields.push(field);
+        // Step 3: Validate timestamp
+        updateStep("timestamp", { status: "processing" });
+        const currentTime = Date.now();
+        const timeDiff = currentTime - presentationData.timestamp;
+        // Check if timestamp is within 5 minutes
+        if (timeDiff > 5 * 60 * 1000) {
+          updateStep("timestamp", { status: "error", error: "Presentation has expired" });
+          throw new Error("Presentation timestamp is too old");
         }
-      }
+        updateStep("timestamp", { status: "completed" });
 
-      // Step 4: Verify blockchain data (if token info is disclosed)
-      if (presentationData.tokenInfo?.address) {
+        // Extract claims and track disclosed fields
+        const claims = verificationResult.payload as unknown as ParsedCredential["claims"];
+        const possibleFields = [
+          "name",
+          "university",
+          "degreeLevel",
+          "graduationYear",
+          "faculty",
+          "issuerAddress",
+        ] as const;
+        for (const field of possibleFields) {
+          if (claims[field] !== undefined) {
+            disclosedFields.push(field);
+          }
+        }
+
+        // Step 4: Verify blockchain data (if token info is disclosed)
+
         updateStep("blockchain", { status: "processing" });
         try {
           const [issuerAddress, studentAddress, tokenUri] = await readContracts(wagmiConfig, {
             contracts: [
               {
-                address: presentationData.tokenInfo.address,
+                address: claims.tokenAddress,
                 abi: EDUNFT_ABI,
                 functionName: "owner",
               },
               {
-                address: presentationData.tokenInfo.address,
+                address: claims.tokenAddress,
                 abi: EDUNFT_ABI,
                 functionName: "ownerOf",
-                args: [BigInt(presentationData.tokenInfo.tokenId)],
+                args: [BigInt(claims.tokenId)],
               },
               {
-                address: presentationData.tokenInfo.address,
+                address: claims.tokenAddress,
                 abi: EDUNFT_ABI,
                 functionName: "tokenURI",
-                args: [BigInt(presentationData.tokenInfo.tokenId)],
+                args: [BigInt(claims.tokenId)],
               },
             ],
           });
@@ -241,10 +256,10 @@ function VerifierPage() {
               // Step 5: Fetch NFT metadata
               updateStep("metadata", { status: "processing" });
               try {
-                const metadata = await download({
+                const metadata = (await download({
                   client: thirdwebClient,
                   uri: tokenUri.result,
-                }).then((res) => res.json()) as { image?: string };
+                }).then((res) => res.json())) as { image?: string };
 
                 if (metadata.image) {
                   nftImage = await resolveScheme({
@@ -261,56 +276,57 @@ function VerifierPage() {
         } catch (error) {
           updateStep("blockchain", { status: "error", error: "Blockchain verification failed" });
         }
-      } else {
-        updateStep("blockchain", { status: "skipped" });
-        updateStep("metadata", { status: "skipped" });
+
+        // Step 6: Validate disclosed claims
+        updateStep("claims", { status: "processing" });
+        if (disclosedFields.length === 0) {
+          updateStep("claims", { status: "error", error: "No claims were disclosed" });
+          throw new Error("No verifiable claims in presentation");
+        }
+        updateStep("claims", { status: "completed" });
+
+        // Build result object with only disclosed fields
+        const certificate: VerificationResult["certificate"] = {
+          issuedAt: new Date(presentationData.timestamp).toISOString(),
+        };
+
+        if (claims.name !== undefined) certificate.name = claims.name;
+        if (claims.university !== undefined) certificate.university = claims.university;
+        if (claims.degreeLevel !== undefined) certificate.degreeLevel = claims.degreeLevel;
+        if (claims.graduationYear !== undefined) certificate.graduationYear = claims.graduationYear;
+        if (claims.faculty !== undefined) certificate.faculty = claims.faculty;
+        if (claims.issuerAddress !== undefined) certificate.issuerAddress = claims.issuerAddress;
+        if (nftImage) certificate.nftImage = nftImage;
+
+        setScanState({
+          isScanning: false,
+          isProcessing: false,
+          result: {
+            success: true,
+            certificate,
+            disclosedFields,
+            error: undefined,
+            tokenInfo: {
+              address: claims.tokenAddress as Address,
+              tokenId: claims.tokenId,
+            },
+          },
+        });
+      } catch (error) {
+        console.error("Verification failed:", error);
+        setScanState({
+          isScanning: false,
+          isProcessing: false,
+          result: {
+            success: false,
+            disclosedFields: [],
+            error: error instanceof Error ? error.message : "Verification failed",
+          },
+        });
       }
-
-      // Step 6: Validate disclosed claims
-      updateStep("claims", { status: "processing" });
-      if (disclosedFields.length === 0) {
-        updateStep("claims", { status: "error", error: "No claims were disclosed" });
-        throw new Error("No verifiable claims in presentation");
-      }
-      updateStep("claims", { status: "completed" });
-
-      // Build result object with only disclosed fields
-      const certificate: VerificationResult["certificate"] = {
-        issuedAt: new Date(presentationData.timestamp).toISOString(),
-      };
-
-      if (claims.name !== undefined) certificate.name = claims.name;
-      if (claims.university !== undefined) certificate.university = claims.university;
-      if (claims.degreeLevel !== undefined) certificate.degreeLevel = claims.degreeLevel;
-      if (claims.graduationYear !== undefined) certificate.graduationYear = claims.graduationYear;
-      if (claims.faculty !== undefined) certificate.faculty = claims.faculty;
-      if (claims.issuerAddress !== undefined) certificate.issuerAddress = claims.issuerAddress;
-      if (nftImage) certificate.nftImage = nftImage;
-
-      setScanState({
-        isScanning: false,
-        isProcessing: false,
-        result: {
-          success: true,
-          certificate,
-          disclosedFields,
-          error: undefined,
-          tokenInfo: presentationData.tokenInfo,
-        },
-      });
-    } catch (error) {
-      console.error("Verification failed:", error);
-      setScanState({
-        isScanning: false,
-        isProcessing: false,
-        result: {
-          success: false,
-          disclosedFields: [],
-          error: error instanceof Error ? error.message : "Verification failed",
-        },
-      });
-    }
-  }, [wagmiConfig, updateStep, resetVerificationSteps]);
+    },
+    [wagmiConfig, updateStep, resetVerificationSteps],
+  );
 
   // Handle QR code scan results
   const handleScanUpdate = useCallback(
@@ -346,7 +362,6 @@ function VerifierPage() {
   const handleManualVerify = useCallback(() => {
     if (!scannerState.manualInput.trim()) return;
     processQRData(scannerState.manualInput);
-    setScannerState((prev) => ({ ...prev, manualInput: "" }));
   }, [processQRData, scannerState.manualInput]);
 
   const handleReset = () => {
@@ -385,7 +400,7 @@ function VerifierPage() {
     : { facingMode: "environment" };
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="mb-8 text-center">
         <div className="mb-4 flex items-center justify-center gap-3">
           <Shield className="h-8 w-8 text-primary" />
@@ -397,7 +412,7 @@ function VerifierPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Scanner Section */}
         <Card>
           <CardHeader>
@@ -558,11 +573,13 @@ function VerifierPage() {
             )}
 
             {(scanState.isScanning || scanState.isProcessing) && (
-              <div className="py-8 text-center">
-                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-primary border-b-2"></div>
-                <p className="text-muted-foreground">
-                  {scanState.isScanning ? "Scanning QR code..." : "Verifying certificate..."}
-                </p>
+              <div className="space-y-4">
+                <div className="py-4 text-center">
+                  <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-primary border-b-2"></div>
+                  <p className="text-muted-foreground">
+                    {scanState.isScanning ? "Scanning QR code..." : "Verifying certificate..."}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -589,9 +606,7 @@ function VerifierPage() {
                         <Badge variant="secondary" className="bg-green-50 text-green-700">
                           Verified
                         </Badge>
-                        <Badge variant="outline">
-                          {scanState.result.disclosedFields.length} fields disclosed
-                        </Badge>
+                        <Badge variant="outline">{scanState.result.disclosedFields.length} fields disclosed</Badge>
                       </div>
                     </div>
 
@@ -619,17 +634,19 @@ function VerifierPage() {
                           <Separator />
                         </>
                       )}
-                      
+
                       {scanState.result.certificate.university !== undefined && (
                         <>
                           <div className="grid grid-cols-3 gap-2">
                             <span className="font-medium text-muted-foreground text-sm">University:</span>
-                            <span className="col-span-2 text-sm truncate">{scanState.result.certificate.university}</span>
+                            <span className="col-span-2 text-sm truncate">
+                              {scanState.result.certificate.university}
+                            </span>
                           </div>
                           <Separator />
                         </>
                       )}
-                      
+
                       {scanState.result.certificate.degreeLevel !== undefined && (
                         <>
                           <div className="grid grid-cols-3 gap-2">
@@ -639,7 +656,7 @@ function VerifierPage() {
                           <Separator />
                         </>
                       )}
-                      
+
                       {scanState.result.certificate.faculty !== undefined && (
                         <>
                           <div className="grid grid-cols-3 gap-2">
@@ -649,7 +666,7 @@ function VerifierPage() {
                           <Separator />
                         </>
                       )}
-                      
+
                       {scanState.result.certificate.graduationYear !== undefined && (
                         <>
                           <div className="grid grid-cols-3 gap-2">
@@ -659,7 +676,7 @@ function VerifierPage() {
                           <Separator />
                         </>
                       )}
-                      
+
                       {/* Always show issued date */}
                       <div className="grid grid-cols-3 gap-2">
                         <span className="font-medium text-muted-foreground text-sm">Issued:</span>
@@ -667,7 +684,7 @@ function VerifierPage() {
                           {new Date(scanState.result.certificate.issuedAt).toLocaleDateString()}
                         </span>
                       </div>
-                      
+
                       {scanState.result.certificate.issuerAddress !== undefined && (
                         <>
                           <Separator />
@@ -689,70 +706,60 @@ function VerifierPage() {
                     </div>
                   </div>
                 )}
+
+                {(scanState.isProcessing || scanState.result) && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span>{verificationProgress}%</span>
+                      </div>
+                      <Progress value={verificationProgress} className="w-full" />
+                    </div>
+
+                    <div className="space-y-3">
+                      {verificationSteps.map((step) => (
+                        <div key={step.id} className="flex items-center space-x-3">
+                          <div className="flex h-8 w-8 items-center justify-center">
+                            {step.status === "pending" && <div className="h-2 w-2 rounded-full bg-gray-300" />}
+                            {step.status === "processing" && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+                            {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
+                            {step.status === "skipped" && <div className="h-5 w-5 text-gray-400">—</div>}
+                            {step.status === "error" && (
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
+                                !
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1">
+                            <p
+                              className={`text-sm ${
+                                step.status === "error"
+                                  ? "text-red-600"
+                                  : step.status === "completed"
+                                    ? "text-green-600"
+                                    : step.status === "processing"
+                                      ? "text-primary"
+                                      : step.status === "skipped"
+                                        ? "text-gray-400"
+                                        : "text-muted-foreground"
+                              }`}
+                            >
+                              {step.label}
+                            </p>
+                            {step.error && <p className="mt-1 text-xs text-red-600">{step.error}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Verification Progress Dialog */}
-      <Dialog open={scanState.isProcessing} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Verifying Presentation</DialogTitle>
-            <DialogDescription>
-              Please wait while we verify the credential presentation.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Progress</span>
-                <span>{verificationProgress}%</span>
-              </div>
-              <Progress value={verificationProgress} className="w-full" />
-            </div>
-
-            <div className="space-y-3">
-              {verificationSteps.map((step) => (
-                <div key={step.id} className="flex items-center space-x-3">
-                  <div className="flex h-8 w-8 items-center justify-center">
-                    {step.status === "pending" && <div className="h-2 w-2 rounded-full bg-gray-300" />}
-                    {step.status === "processing" && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
-                    {step.status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-600" />}
-                    {step.status === "skipped" && <div className="h-5 w-5 text-gray-400">—</div>}
-                    {step.status === "error" && (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
-                        !
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    <p
-                      className={`text-sm ${
-                        step.status === "error"
-                          ? "text-red-600"
-                          : step.status === "completed"
-                            ? "text-green-600"
-                            : step.status === "processing"
-                              ? "text-primary"
-                              : step.status === "skipped"
-                                ? "text-gray-400"
-                                : "text-muted-foreground"
-                      }`}
-                    >
-                      {step.label}
-                    </p>
-                    {step.error && <p className="mt-1 text-xs text-red-600">{step.error}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
