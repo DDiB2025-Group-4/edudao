@@ -122,7 +122,7 @@ function RouteComponent() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-xl">{credential.parsedData.university}</CardTitle>
+                    <CardTitle className="text-xl">{credential.claims.university}</CardTitle>
                     <CardDescription>Educational Credential</CardDescription>
                   </div>
                   <Badge variant="outline" className="ml-auto">
@@ -134,8 +134,8 @@ function RouteComponent() {
               <CardContent>
                 <AspectRatio ratio={16 / 9} className="mb-6 overflow-hidden rounded-md bg-muted">
                   <img
-                    src={credential.parsedData.thumbnail}
-                    alt={`${credential.parsedData.university} credential`}
+                    src={credential.additional.thumbnailHttps}
+                    alt={`${credential.claims.university} credential`}
                     className="h-full w-full object-cover"
                   />
                 </AspectRatio>
@@ -144,17 +144,13 @@ function RouteComponent() {
                   <div>
                     <h3 className="mb-3 font-semibold text-lg">Basic Information</h3>
                     <div className="space-y-1">
-                      <PropertyRow label="University" value={credential.parsedData.university} />
-                      <PropertyRow
-                        label="Student Name"
-                        value={credential.parsedData.name || "Not disclosed"}
-                        sensitive
-                      />
-                      <PropertyRow label="Degree Level" value={credential.parsedData.degreeLevel || "Not disclosed"} />
-                      <PropertyRow label="Faculty" value={credential.parsedData.faculty || "Not disclosed"} />
+                      <PropertyRow label="University" value={credential.claims.university} />
+                      <PropertyRow label="Student Name" value={credential.claims.name || "Not disclosed"} sensitive />
+                      <PropertyRow label="Degree Level" value={credential.claims.degreeLevel || "Not disclosed"} />
+                      <PropertyRow label="Faculty" value={credential.claims.faculty || "Not disclosed"} />
                       <PropertyRow
                         label="Graduation Year"
-                        value={credential.parsedData.graduationYear || "Not disclosed"}
+                        value={credential.claims.graduationYear || "Not disclosed"}
                       />
                     </div>
                   </div>
@@ -182,12 +178,7 @@ function RouteComponent() {
                       <PropertyRow label="Token ID" value={credential.token.tokenId} copyable />
                       <PropertyRow label="Contract Address" value={credential.token.address} copyable sensitive />
                       <PropertyRow label="Chain ID" value={credential.token.chainId.toString()} />
-                      <PropertyRow
-                        label="Issuer Address"
-                        value={credential.parsedData.issuerAddress}
-                        copyable
-                        sensitive
-                      />
+                      <PropertyRow label="Issuer Address" value={credential.claims.issuerAddress} copyable sensitive />
                     </div>
                   </div>
                 </div>
