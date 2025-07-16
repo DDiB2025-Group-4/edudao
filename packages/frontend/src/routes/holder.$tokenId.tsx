@@ -69,11 +69,13 @@ function RouteComponent() {
     const sdjwt = new SDJwtVcInstance({ hasher: sha256, hashAlg: "sha-256" });
 
     const payloadToSign = {
+      issuerAddress: credential.claims.issuerAddress,
       studentAddress: credential.claims.address,
       presantation: await sdjwt.present(credential.sdjwt, selectiveDisclosure as Record<never, never>),
       timestamp: Date.now(),
     };
     const message = JSON.stringify(payloadToSign);
+    console.log("Signing message:", message);
     const signature = await new Promise<Hex>((onSuccess, onError) => signMessage({ message }, { onSuccess, onError }));
 
     const payload = { ...payloadToSign, signature };

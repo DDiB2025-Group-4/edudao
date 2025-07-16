@@ -20,7 +20,7 @@ import { useCallback, useEffect, useState } from "react";
 import BarcodeScanner from "react-qr-barcode-scanner";
 import type { Hex } from "thirdweb";
 import { download, resolveScheme } from "thirdweb/storage";
-import { type Address, verifyMessage } from "viem";
+import { type Address, recoverMessageAddress, verifyMessage } from "viem";
 import { useConfig } from "wagmi";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -92,7 +92,8 @@ interface ScannerState {
 
 const VERIFICATION_STEPS: VerificationStep[] = [
   { id: "parse", label: "Parsing presentation data", status: "pending" },
-  { id: "signature", label: "Verifying SD-JWT signature", status: "pending" },
+  { id: "issuer-signature", label: "Verifying SD-JWT signature (Issuer)", status: "pending" },
+  { id: "holder-signature", label: "Verifying Holder signature", status: "pending" },
   { id: "timestamp", label: "Validating timestamp", status: "pending" },
   { id: "blockchain", label: "Verifying blockchain data", status: "pending" },
   { id: "metadata", label: "Fetching NFT metadata", status: "pending" },
@@ -150,6 +151,7 @@ function VerifierPage() {
         // Step 1: Parse presentation data
         updateStep("parse", { status: "processing" });
         let presentationData: {
+          issuerAddress: Address;
           studentAddress: Address;
           presantation: string; // Note: typo in original
           timestamp: number;
@@ -168,11 +170,12 @@ function VerifierPage() {
         updateStep("parse", { status: "completed" });
 
         // Step 2: Verify SD-JWT signature
-        updateStep("signature", { status: "processing" });
+        updateStep("issuer-signature", { status: "processing" });
         const sdjwt = new SDJwtVcInstance({
           signAlg: "ECDSA",
-          verifier: async (message, sig) =>
-            verifyMessage({ message, signature: sig as Hex, address: presentationData.studentAddress }),
+          verifier: async (message, sig) => {
+            return await verifyMessage({ message, signature: sig as Hex, address: presentationData.issuerAddress });
+          },
           hasher: sha256,
           hashAlg: "sha-256",
         });
@@ -184,10 +187,29 @@ function VerifierPage() {
             throw new Error("Invalid signature");
           }
         } catch (error) {
-          updateStep("signature", { status: "error", error: "Invalid SD-JWT signature" });
+          updateStep("issuer-signature", { status: "error", error: "Invalid SD-JWT signature" });
           throw error;
         }
-        updateStep("signature", { status: "completed" });
+        updateStep("issuer-signature", { status: "completed" });
+
+        updateStep("holder-signature", { status: "processing" });
+        const message = JSON.stringify({
+          issuerAddress: presentationData.issuerAddress,
+          studentAddress: presentationData.studentAddress,
+          presantation: presentationData.presantation,
+          timestamp: presentationData.timestamp,
+        });
+        const isValid = await verifyMessage({
+          address: presentationData.studentAddress,
+          message,
+          signature: presentationData.signature,
+        });
+
+        if (!isValid) {
+          updateStep("holder-signature", { status: "error", error: "Invalid holder signature" });
+          throw new Error("Invalid holder signature");
+        }
+        updateStep("holder-signature", { status: "completed" });
 
         // Step 3: Validate timestamp
         updateStep("timestamp", { status: "processing" });
