@@ -390,23 +390,6 @@ function VerifierPage() {
   };
 
   useEffect(() => {
-    navigator.mediaDevices
-      .enumerateDevices()
-      .then((devices) => {
-        const videoDevices = devices
-          .filter((device) => device.kind === "videoinput")
-          .map((device) => ({
-            deviceId: device.deviceId,
-            label: device.label || `Camera ${device.deviceId.slice(0, 4)}`,
-          }));
-        setScannerState((prev) => ({ ...prev, devices: videoDevices, selectedDeviceId: videoDevices[0]?.deviceId }));
-      })
-      .catch((err) => {
-        setScannerState((prev) => ({ ...prev, scannerError: err.message }));
-      });
-  }, []);
-
-  useEffect(() => {
     if (injectedPayload) {
       setActiveTab("manual");
       const payloadString = typeof injectedPayload === "string" ? injectedPayload : JSON.stringify(injectedPayload);
@@ -456,43 +439,6 @@ function VerifierPage() {
               </TabsList>
 
               <TabsContent value="scanner" className="space-y-4">
-                {/* Camera Controls */}
-                <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <Select
-                      value={scannerState.selectedDeviceId || ""}
-                      onValueChange={(value) =>
-                        setScannerState((prev) => ({
-                          ...prev,
-                          selectedDeviceId: value || undefined,
-                          stopStream: true, // Force restart with new camera
-                        }))
-                      }
-                    >
-                      <SelectTrigger id="camera-select" className="flex-1">
-                        <SelectValue placeholder="Select camera" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {scannerState.devices.map((device) => (
-                          <SelectItem key={device.deviceId} value={device.deviceId}>
-                            {device.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex flex-col justify-end">
-                      <Button
-                        variant="outline"
-                        onClick={() => setScannerState((prev) => ({ ...prev, torch: !prev.torch }))}
-                        disabled={!scanState.isScanning}
-                      >
-                        {scannerState.torch ? <ZapOff className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Scanner Display */}
                 <div className="relative">
                   <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted [&>video]:absolute [&>video]:inset-0 [&>video]:h-full [&>video]:w-full [&>video]:object-cover">
