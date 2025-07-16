@@ -3,19 +3,7 @@ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
 import { createFileRoute } from "@tanstack/react-router";
 import { readContracts } from "@wagmi/core";
 import type { Result as ScanResult } from "@zxing/library";
-import {
-  AlertCircle,
-  Camera,
-  CheckCircle,
-  CheckCircle2,
-  Loader2,
-  QrCode,
-  Shield,
-  Type,
-  XCircle,
-  Zap,
-  ZapOff,
-} from "lucide-react";
+import { AlertCircle, Camera, CheckCircle, CheckCircle2, Loader2, QrCode, Shield, Type, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import BarcodeScanner from "react-qr-barcode-scanner";
 import type { Hex } from "thirdweb";
@@ -28,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
