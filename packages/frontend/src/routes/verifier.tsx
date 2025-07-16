@@ -20,7 +20,7 @@ import { useCallback, useEffect, useState } from "react";
 import BarcodeScanner from "react-qr-barcode-scanner";
 import type { Hex } from "thirdweb";
 import { download, resolveScheme } from "thirdweb/storage";
-import { type Address, recoverMessageAddress, verifyMessage } from "viem";
+import { type Address, verifyMessage } from "viem";
 import { useConfig } from "wagmi";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
