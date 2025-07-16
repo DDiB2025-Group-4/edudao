@@ -1,13 +1,51 @@
 # EduDAO
 
-ultrathink src/routes/issuer.tsxで生成したCredentialsを、Holder(学生)がImportし、詳細を閲覧できるページを作ってください。
+A blockchain project for educational credentials using NFTs.
 
-イメージとして、トップページと詳細ページがあり、トップページでCredentialの読み込みと一覧表示ができます。Credentialが持つプロパティは、issuer.tsxを参照してください。
-そして、詳細ページでCredentialの各プロパティの閲覧と、Verifierに対する選択開示可能な証明QRコードを生成できるイメージです。
+## What is this?
 
-クレデンシャルの各プロパティはCredential.sdjwtに格納されているのですが、ここからプロパティをパースする部分はいい感じにモックしてください。
-同様に、トップページにはサムネイルとタイトルを表示してほしいのですが、画像の部分もいったんモックしてください。
+EduDAO is a system that uses blockchain technology to issue, manage, and verify educational certificates as NFTs (Non-Fungible Tokens). Schools and educational institutions can issue tamper-proof digital certificates to students.
 
-また、読み込んだCredentailの永続化は、zustand + persistプラグインで実装してください。これらは既にインストールされています。
+## Project Structure
 
-最後に、このプロジェクトはshadcnUIとTanstackRouterで構成されています。これらを最大限生かし、スタイリッシュなコーディングを心がけてください。特に、ShadcnUIはCSS変数経由でデザインシステムを提供するので、border-green-5o0のようにくれぐれも直接色や値を用いないでください。
+- **contracts/** - Smart contracts for the blockchain (Ethereum)
+- **frontend/** - Web interface for users
+
+## Features
+
+- Issue educational certificates as NFTs
+- Verify certificates on the blockchain
+- Manage credentials for students and institutions
+- Secure and tamper-proof records
+
+## How to Run
+
+### Install dependencies
+```bash
+npm install
+```
+
+### Development
+```bash
+npm run dev
+```
+
+### Build
+```bash
+npm run build
+```
+
+### Lint
+```bash
+npm run lint
+```
+
+## Technologies Used
+
+- Smart Contracts: Solidity, Hardhat, OpenZeppelin
+- Frontend: React, Vite, TypeScript
+- Blockchain: Ethereum (Optimism Sepolia testnet)
+
+## License
+
+ISC
